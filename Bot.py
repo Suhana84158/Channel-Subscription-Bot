@@ -1965,3 +1965,160 @@ def register_jobs():
         hours=1
     )
     
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ContextTypes
+
+from database.admins import is_admin
+from database.payments import (
+    get_pending_payments,
+    approve_payment,
+    reject_payment,
+)
+from database.subscriptions import create_subscription
+from database.channels import get_all_channels
+from database.users import activate_subscription
+
+
+# -------------------------
+# VIEW PENDING PAYMENTS
+# -------------------------
+
+async def view_pending_payments(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    user = update.effective_user
+
+    if not await is_admin(user.id):
+        await update.message.reply_text("❌ Not authorized.")
+        return
+
+    payments = await get_pending_payments()
+
+    if not payments:
+        await update.message.reply_text("✅ No pending payments.")
+        return
+
+    for p in payments:
+
+        text = f"""
+💳 PAYMENT REQUEST
+
+User ID: {p['user_id']}
+Amount: {p['amount']}
+Plan Days: {p['plan_days']}
+"""
+
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "✅ Approve",
+                    callback_data=f"approve_{p['_id']}"
+                ),
+                InlineKeyboardButton(
+                    "❌ Reject",
+                    callback_data=f"reject_{p['_id']}"
+                )
+            ]
+        ]
+
+        if p.get("screenshot_file_id"):
+            await update.message.reply_photo(
+                photo=p["screenshot_file_id"],
+                caption=text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+            )
+        else:
+            await update.message.reply_text(
+                text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+            )
+
+
+# -------------------------
+# CALLBACK HANDLER
+# -------------------------
+
+async def payment_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    query = update.callback_query
+    await query.answer()
+
+    user = query.from_user
+
+    if not await is_admin(user.id):
+        await query.edit_message_text("❌ Not authorized.")
+        return
+
+    data = query.data
+
+    # APPROVE
+    if data.startswith("approve_"):
+
+        payment_id = data.split("_")[1]
+
+        await approve_payment(payment_id, user.id)
+
+        payment = await context.bot_data["db"].payments.find_one({"_id": payment_id})
+
+        user_id = payment["user_id"]
+        plan_days = payment["plan_days"]
+
+        channels = await get_all_channels()
+
+        await create_subscription(
+            user_id,
+            plan_days,
+            [c["_id"] for c in channels],
+        )
+
+        await activate_subscription(user_id)
+
+        await query.edit_message_text("✅ Payment Approved & Subscription Activated")
+
+    # REJECT
+    elif data.startswith("reject_"):
+
+        payment_id = data.split("_")[1]
+
+        await reject_payment(payment_id, user.id)
+
+        await query.edit_message_text("❌ Payment Rejected")
+        from telegram import Update
+from telegram.ext import ContextTypes
+
+from database.subscriptions import is_subscription_active
+from database.channels import get_all_channels
+
+
+async def check_user_access(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    user = update.effective_user
+
+    active = await is_subscription_active(user.id)
+
+    if active:
+        return True
+
+    channels = await get_all_channels()
+
+    text = "❌ You don't have active subscription."
+
+    await update.message.reply_text(text)
+
+    return False
+    from handlers.admin_payments import (
+    view_pending_payments,
+    payment_action,
+)
+    application.add_handler(
+    CommandHandler("pending", view_pending_payments)
+)
+
+application.add_handler(
+    CallbackQueryHandler(
+        payment_action,
+        pattern="^(approve_|reject_)"
+    )
+)
+from bson import ObjectId
+
+payment = await payments.find_one({"_id": ObjectId(payment_id)})
