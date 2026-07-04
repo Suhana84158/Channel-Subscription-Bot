@@ -39,7 +39,8 @@ PORT=10000
 # Timezone
 TIMEZONE=Asia/Kolkata
 import os
-from dotenv import load_dotenv
+from utils.job_runner import register_jobs
+from.dotenv import load_dotenv
 
 load_dotenv()
 
@@ -312,6 +313,7 @@ def create_application():
 async def post_init(application: Application):
     logger.info("Starting scheduler...")
     start_scheduler()
+    register_jobs()
     logger.info("Scheduler started.")
 
     logger.info("Bot is ready.")
@@ -1460,3 +1462,506 @@ async def expired_subscriptions_count():
             },
         }
     )
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ContextTypes
+
+from database.users import create_user, get_user
+from database.subscriptions import is_subscription_active
+from database.channels import get_all_channels
+
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+
+    await create_user(user)
+
+    is_active = await is_subscription_active(user.id)
+
+    if is_active:
+        await update.message.reply_text(
+            "✅ You already have an active subscription."
+        )
+        return
+
+    channels = await get_all_channels()
+
+    if not channels:
+        await update.message.reply_text(
+            "⚠️ No subscription channels configured."
+        )
+        return
+
+    text = "🚫 You must join all channels to continue:\n\n"
+
+    buttons = []
+
+    for ch in channels:
+        title = ch.get("title")
+        username = ch.get("username")
+
+        if username:
+            link = f"https://t.me/{username}"
+        else:
+            link = ch.get("invite_link", "#")
+
+        text += f"• {title}\n"
+
+        buttons.append(
+            [
+                InlineKeyboardButton(
+                    f"Join {title}",
+                    url=link,
+                )
+            ]
+        )
+
+    buttons.append(
+        [
+            InlineKeyboardButton(
+                "🔄 Check Again",
+                callback_data="check_subscription",
+            )
+        ]
+    )
+
+    await update.message.reply_text(
+        text,
+        reply_markup=InlineKeyboardMarkup(buttons),
+    )
+    from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ContextTypes
+
+from database.admins import is_admin
+from database.users import total_users, active_users
+from database.channels import total_channels
+from database.payments import pending_payments_count, total_revenue
+
+
+# -------------------------
+# ADMIN PANEL
+# -------------------------
+
+async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    user = update.effective_user
+
+    if not await is_admin(user.id):
+        await update.message.reply_text("❌ You are not an admin.")
+        return
+
+    users = await total_users()
+    active = await active_users()
+    channels = await total_channels()
+
+    pending_payments = await pending_payments_count()
+    revenue = await total_revenue()
+
+    text = f"""
+🛠️ ADMIN PANEL
+
+👥 Total Users: {users}
+✅ Active Users: {active}
+📢 Channels: {channels}
+
+💰 Revenue: {revenue}
+⏳ Pending Payments: {pending_payments}
+"""
+
+    keyboard = [
+        [
+            InlineKeyboardButton("👥 Users", callback_data="admin_users"),
+            InlineKeyboardButton("💰 Revenue", callback_data="admin_revenue"),
+        ],
+        [
+            InlineKeyboardButton("📢 Broadcast", callback_data="admin_broadcast"),
+        ],
+        [
+            InlineKeyboardButton("⏳ Pending Payments", callback
+    from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ContextTypes
+
+from config import UPI_ID, UPI_NAME, QR_IMAGE, DEFAULT_PLAN_DAYS
+from database.payments import create_payment, update_screenshot
+from database.users import get_user
+
+
+# -------------------------
+# PAYMENT MENU
+# -------------------------
+
+async def payment_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    user = update.effective_user
+
+    text = f"""
+💳 PAYMENT DETAILS
+
+UPI ID: {UPI_ID}
+Name: {UPI_NAME}
+
+📌 Plan: {DEFAULT_PLAN_DAYS} Days
+💰 After payment, send screenshot here.
+"""
+
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "📤 I Paid (Send Screenshot)",
+                callback_data="paid_now"
+            )
+        ]
+    ]
+
+    await update.message.reply_photo(
+        photo=open(QR_IMAGE, "rb"),
+        caption=text,
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+
+# -------------------------
+# SCREENSHOT HANDLER
+# -------------------------
+
+async def payment_screenshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    user = update.effective_user
+
+    if not update.message.photo:
+        return
+
+    photo = update.message.photo[-1]
+
+    file_id = photo.file_id
+
+    payment_id = await create_payment(
+        user_id=user.id,
+        amount=0,  # can be updated later via admin
+        plan_days=DEFAULT_PLAN_DAYS,
+        screenshot_file_id=file_id
+    )
+
+    await update.message.reply_text(
+        "✅ Payment screenshot received!\n\n⏳ Admin will verify your payment soon."
+    )
+
+    context.user_data["last_payment_id"] = payment_id
+
+
+# -------------------------
+# CALLBACK (PAY BUTTON)
+# -------------------------
+
+async def payment_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    query =
+    from telegram import Update
+from telegram.ext import ContextTypes
+
+from datetime import datetime
+
+from database.subscriptions import (
+    get_subscription,
+    is_subscription_active,
+    renew_subscription,
+)
+
+
+# -------------------------
+# MY SUBSCRIPTION
+# -------------------------
+
+async def my_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    user = update.effective_user
+
+    sub = await get_subscription(user.id)
+
+    if not sub:
+        await update.message.reply_text(
+            "❌ You don't have any subscription yet.\n\nUse /pay to buy access."
+        )
+        return
+
+    is_active = await is_subscription_active(user.id)
+
+    expiry = sub.get("expiry_date")
+    renew_count = sub.get("renew_count", 0)
+
+    status = "🟢 ACTIVE" if is_active else "🔴 EXPIRED"
+
+    text = f"""
+📦 YOUR SUBSCRIPTION
+
+Status: {status}
+Expiry: {expiry}
+Renewed: {renew_count} times
+"""
+
+    await update.message.reply_text(text)
+
+
+# -------------------------
+# RENEW SUBSCRIPTION
+# -------------------------
+
+async def renew_plan(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    user = update.effective_user
+
+    args = context.args
+
+    if not args:
+        await update.message.reply_text(
+            "⚠️ Usage: /renew <days>"
+        )
+        return
+
+    try:
+        from telegram import Update
+from telegram.ext import ContextTypes
+
+from database.admins import is_admin
+from database.users import get_all_users
+
+
+# -------------------------
+# BROADCAST START
+# -------------------------
+
+async def broadcast_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    user = update.effective_user
+
+    if not await is_admin(user.id):
+        await update.message.reply_text("❌ You are not an admin.")
+        return
+
+    context.user_data["broadcast_mode"] = True
+
+    await update.message.reply_text(
+        "📢 Send the message you want to broadcast to all users."
+    )
+
+
+# -------------------------
+# BROADCAST MESSAGE HANDLER
+# -------------------------
+
+async def broadcast_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    user = update.effective_user
+
+    if not context.user_data.get("broadcast_mode"):
+        return
+
+    if not await is_admin(user.id):
+        return
+
+    message = update.message
+
+    users = await get_all_users()
+
+    sent = 0
+    failed = 0
+
+    await update.message.reply_text(
+        "📤 Broadcasting started..."
+    )
+
+    for u in users:
+
+
+        from telegram import Update
+from telegram.ext import ContextTypes
+
+from database.admins import is_admin
+from database.users import (
+    total_users,
+    active_users,
+    inactive_users,
+)
+
+from database.payments import (
+    total_revenue,
+    total_payments,
+    pending_payments_count,
+    approved_payments_count,
+    rejected_payments_count,
+)
+
+from database.channels import total_channels
+from database.subscriptions import (
+    total_subscriptions,
+    active_subscriptions_count,
+    expired_subscriptions_count,
+)
+
+
+# -------------------------
+# USER STATS
+# -------------------------
+
+async def user_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    user = update.effective_user
+
+    if not await is_admin(user.id):
+        await update.message.reply_text("❌ You are not authorized.")
+        return
+
+    users = await total_users()
+    active = await active_users()
+    inactive = await inactive_users()
+
+    text = f"""
+👥 USER STATISTICS
+
+Total Users: {users}
+Active Users: {active}
+Inactive Users: {inactive}
+"""
+
+    await
+    from telegram.error import TelegramError
+
+
+async def create_invite_link(bot, channel_id: int, expire_seconds: int = 300):
+    """
+    Generate temporary invite link for user.
+    """
+
+    try:
+        link = await bot.create_chat_invite_link(
+            chat_id=channel_id,
+            member_limit=1,
+            expire_date=None
+        )
+
+        return link.invite_link
+
+    except TelegramError:
+        return None
+        from telegram.error import TelegramError
+
+
+async def remove_user_from_channel(bot, channel_id: int, user_id: int):
+    """
+    Kick user from channel after expiry.
+    """
+
+    try:
+        await bot.ban_chat_member(
+            chat_id=channel_id,
+            user_id=user_id
+        )
+
+        await bot.unban_chat_member(
+            chat_id=channel_id,
+            user_id=user_id
+        )
+
+        return True
+
+    except TelegramError:
+        return False
+        from datetime import datetime
+
+
+def is_expired(expiry_date):
+    if not expiry_date:
+        return True
+
+    return expiry_date < datetime.utcnow()
+
+
+def format_date(date_obj):
+    if not date_obj:
+        return "N/A"
+
+    return date_obj.strftime("%Y-%m-%d %H:%M:%S")
+    import qrcode
+
+
+def generate_upi_qr(
+    upi_id: str,
+    name: str,
+    amount: float = None
+):
+    """
+    Generate UPI QR code image.
+    """
+
+    data = f"upi://pay?pa={upi_id}&pn={name}"
+
+    if amount:
+        data += f"&am={amount}"
+
+    img = qrcode.make(data)
+
+    file_path = "assets/generated_qr.png"
+
+    img.save(file_path)
+
+    return file_path
+    from datetime import datetime
+
+from database.subscriptions import get_expired_subscriptions
+from database.users import deactivate_subscription
+from database.channels import get_all_channels
+
+from utils.remove import remove_user_from_channel
+
+
+async def check_expired_subscriptions(app):
+    """
+    Runs periodically to remove expired users.
+    """
+
+    expired_users = await get_expired_subscriptions()
+    channels = await get_all_channels()
+
+    for user in expired_users:
+
+        user_id = user["user_id"]
+
+        for ch in channels:
+            channel_id = ch["_id"]
+
+            await remove_user_from_channel(
+                app.bot,
+                channel_id,
+                user_id
+            )
+
+        await deactivate_subscription(user_id)
+
+
+async def log_stats():
+    """
+    Placeholder for future analytics logging.
+    """
+
+    print(f"[STATS] Checked at {datetime.utcnow()}")
+    from scheduler import add_job
+from scheduler_jobs import check_expired_subscriptions, log_stats
+
+
+def register_jobs():
+
+    # Every 10 minutes check expired users
+    add_job(
+        func=check_expired_subscriptions,
+        trigger="interval",
+        job_id="check_expiry",
+        minutes=10
+    )
+
+    # Every hour stats log
+    add_job(
+        func=log_stats,
+        trigger="interval",
+        job_id="log_stats",
+        hours=1
+    )
+    
