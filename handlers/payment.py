@@ -9,6 +9,7 @@ from telegram.ext import (
 )
 
 from config import UPI_ID, UPI_NAME
+from handlers.plans import get_plan
 
 
 async def buy_subscription(
@@ -16,17 +17,30 @@ async def buy_subscription(
     context: ContextTypes.DEFAULT_TYPE,
 ):
     query = update.callback_query
-
     await query.answer()
+
+    plan_name = query.data.replace("buy_", "")
+
+    plan = get_plan(plan_name)
+
+    if not plan:
+        await query.answer(
+            "Invalid plan selected.",
+            show_alert=True,
+        )
+        return
+
+    # Save selected plan
+    context.user_data["selected_plan"] = plan
 
     text = (
         "💳 *Subscription Payment*\n\n"
+        f"📦 Plan: *{plan['name']}*\n"
+        f"💰 Amount: ₹{plan['price']}\n"
+        f"📅 Duration: {plan['days']} Days\n\n"
         f"👤 UPI Name: {UPI_NAME}\n"
         f"🏦 UPI ID: `{UPI_ID}`\n\n"
-        "✅ Scan the QR Code or pay using the UPI ID.\n\n"
-        "📷 After payment, send:\n"
-        "• Payment Screenshot\n"
-        "• UTR / Transaction ID"
+        "After payment upload your payment screenshot."
     )
 
     keyboard = [
@@ -35,7 +49,13 @@ async def buy_subscription(
                 "📤 Upload Screenshot",
                 callback_data="upload_payment",
             )
-        ]
+        ],
+        [
+            InlineKeyboardButton(
+                "⬅ Back",
+                callback_data="plans",
+            )
+        ],
     ]
 
     await query.edit_message_text(
@@ -48,5 +68,5 @@ async def buy_subscription(
 def payment_handler():
     return CallbackQueryHandler(
         buy_subscription,
-        pattern="^buy$",
+        pattern=r"^buy_",
     )
