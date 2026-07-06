@@ -5,20 +5,20 @@ from telegram.ext import (
 )
 
 from database.users import get_or_create_user
+from keyboards.main_menu import get_main_menu
 
 
 WELCOME_MESSAGE = """
-👋 Welcome to the Subscription Bot!
+👋 *Welcome to Subscription Bot!*
 
-✨ Available Features:
+Choose an option from the menu below.
 
-• Subscription Plans
+✨ Features:
+• Premium Channel Access
 • Secure UPI Payment
-• Auto Channel Access
-• Auto Renewal
+• Auto Subscription
 • Referral Rewards
-
-Use the menu below to continue.
+• Fast Support
 """
 
 
@@ -31,7 +31,9 @@ async def start(
     await get_or_create_user(user)
 
     await update.message.reply_text(
-        WELCOME_MESSAGE
+        text=WELCOME_MESSAGE,
+        reply_markup=get_main_menu(),
+        parse_mode="Markdown",
     )
 
 
