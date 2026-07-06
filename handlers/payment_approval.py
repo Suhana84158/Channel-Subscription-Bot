@@ -1,79 +1,54 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import CallbackQueryHandler, ContextTypes
-
+from services.subscription_service import activate_subscription
+from services.channel_service import grant_channel_access
 from database.payments import update_payment_status
-from database.subscriptions import activate_subscription
 from database.admins import is_admin
 
 
-# -----------------------------
-# APPROVE PAYMENT
-# -----------------------------
-async def approve_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def approve_payment(update, context):
     query = update.callback_query
     await query.answer()
 
     admin_id = query.from_user.id
 
+    # ❌ security check
     if not await is_admin(admin_id):
         await query.edit_message_text("❌ Not authorized")
         return
 
-    data = query.data.split("_")  # approve_userid
-    user_id = int(data[1])
-
-    await update_payment_status(user_id, "approved")
-    await activate_subscription(user_id)
-
-    await query.edit_message_text(
-        f"✅ Payment Approved\nUser ID: {user_id}"
-    )
-
     try:
-        await context.bot.send_message(
-            chat_id=user_id,
-            text="🎉 Payment Approved!\nYour subscription is now active.",
+        # callback data: approve_12345_30
+        data = query.data.split("_")
+
+        user_id = int(data[1])
+
+        # default plan days = 30 (safe fallback)
+        plan_days = int(data[2]) if len(data) > 2 else 30
+
+        # update payment status
+        await update_payment_status(user_id, "approved")
+
+        # activate subscription
+        await activate_subscription(user_id, plan_days=plan_days)
+
+        # grant channel access
+        await grant_channel_access(user_id)
+
+        # update admin message
+        await query.edit_message_text(
+            f"✅ Payment Approved\n\nUser ID: {user_id}\nPlan: {plan_days} days"
         )
-    except:
-        pass
 
+        # notify user
+        try:
+            await context.bot.send_message(
+                chat_id=user_id,
+                text=(
+                    "🎉 Payment Approved!\n\n"
+                    f"Your subscription is active for {plan_days} days."
+                ),
+            )
+        except:
+            pass
 
-# -----------------------------
-# REJECT PAYMENT
-# -----------------------------
-async def reject_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    admin_id = query.from_user.id
-
-    if not await is_admin(admin_id):
-        await query.edit_message_text("❌ Not authorized")
-        return
-
-    data = query.data.split("_")  # reject_userid
-    user_id = int(data[1])
-
-    await update_payment_status(user_id, "rejected")
-
-    await query.edit_message_text(
-        f"❌ Payment Rejected\nUser ID: {user_id}"
-    )
-
-    try:
-        await context.bot.send_message(
-            chat_id=user_id,
-            text="❌ Payment rejected. Please try again.",
-        )
-    except:
-        pass
-
-
-# -----------------------------
-# HANDLER REGISTRATION
-# -----------------------------
-def payment_approval_handlers():
-    return [
-        CallbackQueryHandler(approve_payment, pattern="^approve_"),
-        CallbackQueryHandler(reject_payment, pattern="^reject_"),
-    ]
+    except Exception as e:
+        await query.edit_message_text(f"❌ Error: {str(e)}")
