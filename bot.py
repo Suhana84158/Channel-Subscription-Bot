@@ -71,6 +71,7 @@ async def register_handlers(application: Application):
     application.add_handler(profile_callback())
     application.add_handler(payment_handler())
     for handler in payment_upload_handlers():
+        
     application.add_handler(handler)
     application.add_handler(subscription_callback())
     application.add_handler(referral_callback())
