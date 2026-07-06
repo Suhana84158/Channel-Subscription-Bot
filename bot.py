@@ -18,6 +18,7 @@ from database.admins import initialize_admins
 from handlers.start import start_command
 from handlers.errors import error_handler
 
+from handlers.upload_payment import payment_upload_handlers
 from handlers.plans import plans_handler
 from handlers.profile import profile_callback
 from handlers.payment import payment_handler
@@ -69,6 +70,8 @@ async def register_handlers(application: Application):
     application.add_handler(plans_handler())
     application.add_handler(profile_callback())
     application.add_handler(payment_handler())
+    for handler in payment_upload_handlers():
+    application.add_handler(handler)
     application.add_handler(subscription_callback())
     application.add_handler(referral_callback())
     application.add_handler(broadcast_handler())
