@@ -65,31 +65,32 @@ def build_application():
 # -------------------------
 async def register_handlers(application: Application):
 
-    # User commands & callbacks
+    # User handlers
     application.add_handler(start_command())
     application.add_handler(plans_handler())
     application.add_handler(profile_callback())
     application.add_handler(payment_handler())
+
     for handler in payment_upload_handlers():
-        
-    application.add_handler(handler)
+        application.add_handler(handler)
+
     application.add_handler(subscription_callback())
     application.add_handler(referral_callback())
     application.add_handler(broadcast_handler())
     application.add_handler(statistics_handler())
 
-    # Admin commands
+    # Admin handlers
     for handler in admin_handlers():
         application.add_handler(handler)
 
-    # Payment approval callbacks
+    # Payment approval handlers
     for handler in payment_approval_handlers():
         application.add_handler(handler)
 
     # Error handler
     application.add_error_handler(error_handler)
 
-    logger.info("All handlers registered.")
+    logger.info("All handlers registered successfully.")
 
 
 # -------------------------
