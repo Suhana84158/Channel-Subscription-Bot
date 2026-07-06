@@ -1,59 +1,107 @@
-from telegram import Update
-from telegram.ext import MessageHandler, filters, ContextTypes
+from telegram import (
+    Update,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+)
+from telegram.ext import (
+    MessageHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+    filters,
+)
 
 from database.payments import create_payment
-from database.users import get_user
-from database.admins import get_admins
-from config import ADMIN_GROUP_ID
+from database.admins import get_all_admins
+
+
+async def upload_payment_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    query = update.callback_query
+    await query.answer()
+
+    await query.message.reply_text(
+        "📷 Please send your payment screenshot in this chat."
+    )
 
 
 async def handle_payment_screenshot(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
 ):
+    if not update.message.photo:
+        return
+
     user = update.effective_user
 
-    if not update.message.photo:
+    plan = context.user_data.get("selected_plan")
+
+    if plan is None:
+        await update.message.reply_text(
+            "❌ Please select a subscription plan first."
+        )
         return
 
     photo = update.message.photo[-1].file_id
 
-    user_data = await get_user(user.id)
-
-    payment = await create_payment(
+    await create_payment(
         user_id=user.id,
-        username=user.username,
-        screenshot=photo,
-        status="pending",
+        plan=plan["name"],
+        amount=plan["price"],
+        screenshot_file_id=photo,
     )
 
-    text = (
-        "🆕 *New Payment Request*\n\n"
+    keyboard = InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "✅ Approve",
+                    callback_data=f"approve_{user.id}_{plan['days']}",
+                ),
+                InlineKeyboardButton(
+                    "❌ Reject",
+                    callback_data=f"reject_{user.id}",
+                ),
+            ]
+        ]
+    )
+
+    caption = (
+        "🆕 New Payment\n\n"
         f"👤 User: {user.first_name}\n"
-        f"🆔 ID: `{user.id}`\n"
-        f"📌 Status: Pending\n\n"
-        "Use admin panel to approve or reject."
+        f"🆔 User ID: {user.id}\n"
+        f"📦 Plan: {plan['name']}\n"
+        f"💰 Amount: ₹{plan['price']}\n"
+        f"📅 Duration: {plan['days']} Days"
     )
 
-    admins = await get_admins()
+    admins = await get_all_admins()
 
     for admin in admins:
         try:
             await context.bot.send_photo(
-                chat_id=admin["user_id"],
+                chat_id=admin["admin_id"],
                 photo=photo,
-                caption=text,
+                caption=caption,
+                reply_markup=keyboard,
             )
-        except:
+        except Exception:
             pass
 
     await update.message.reply_text(
-        "✅ Payment received! Waiting for approval."
+        "✅ Payment submitted successfully.\n\nWaiting for admin approval."
     )
 
 
-def payment_upload_handler():
-    return MessageHandler(
-        filters.PHOTO,
-        handle_payment_screenshot,
-    )
+def payment_upload_handlers():
+    return [
+        CallbackQueryHandler(
+            upload_payment_callback,
+            pattern=r"^upload_payment$",
+        ),
+        MessageHandler(
+            filters.PHOTO,
+            handle_payment_screenshot,
+        ),
+    ]
