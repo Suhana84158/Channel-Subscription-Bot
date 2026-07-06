@@ -11,10 +11,17 @@ db = None
 
 
 async def connect_database():
+    """
+    Connect to MongoDB.
+    """
+
     global client, db
 
     try:
-        client = AsyncIOMotorClient(MONGO_URI)
+        client = AsyncIOMotorClient(
+            MONGO_URI,
+            serverSelectionTimeoutMS=5000,
+        )
 
         await client.admin.command("ping")
 
@@ -28,6 +35,10 @@ async def connect_database():
 
 
 def get_database():
+    """
+    Return database instance.
+    """
+
     if db is None:
         raise RuntimeError(
             "Database is not initialized."
@@ -36,7 +47,19 @@ def get_database():
     return db
 
 
+def is_connected():
+    """
+    Check whether database is initialized.
+    """
+
+    return db is not None
+
+
 async def close_database():
+    """
+    Close MongoDB connection.
+    """
+
     global client
 
     if client:
