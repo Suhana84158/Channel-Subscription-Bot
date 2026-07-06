@@ -24,6 +24,11 @@ from handlers.broadcast import broadcast_handler
 from handlers.statistics import statistics_handler
 from handlers.admin import admin_handlers
 
+from telegram import Update
+from telegram.ext import ContextTypes
+from handlers.start import start_command
+from handlers.errors import error_handler
+
 async def post_init(application: Application):
     """
     Runs after bot startup.
@@ -50,13 +55,6 @@ def build_application():
     )
 
     return application
-from telegram import Update
-from telegram.ext import ContextTypes
-
-# Handler imports
-from handlers.start import start_command
-from handlers.errors import error_handler
-
 
 async def register_handlers(application: Application):
 
