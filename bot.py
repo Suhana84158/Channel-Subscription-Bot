@@ -27,6 +27,9 @@ from handlers.broadcast import broadcast_handler
 from handlers.statistics import statistics_handler
 from handlers.admin import admin_handlers
 
+# Payment approval system
+from handlers.payment_approval import payment_approval_handlers
+
 
 # -------------------------
 # POST INIT
@@ -61,7 +64,7 @@ def build_application():
 # -------------------------
 async def register_handlers(application: Application):
 
-    # Commands / callbacks
+    # User commands & callbacks
     application.add_handler(start_command())
     application.add_handler(plans_handler())
     application.add_handler(profile_callback())
@@ -71,8 +74,12 @@ async def register_handlers(application: Application):
     application.add_handler(broadcast_handler())
     application.add_handler(statistics_handler())
 
-    # Admin handlers
+    # Admin commands
     for handler in admin_handlers():
+        application.add_handler(handler)
+
+    # Payment approval callbacks
+    for handler in payment_approval_handlers():
         application.add_handler(handler)
 
     # Error handler
@@ -82,7 +89,7 @@ async def register_handlers(application: Application):
 
 
 # -------------------------
-# MAIN START FUNCTION
+# MAIN
 # -------------------------
 async def main():
 
@@ -106,7 +113,7 @@ async def main():
 
 
 # -------------------------
-# RUN BOT
+# RUN
 # -------------------------
 if __name__ == "__main__":
     asyncio.run(main())
