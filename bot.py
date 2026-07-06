@@ -110,11 +110,8 @@ async def main():
 
     logger.info("Bot initialization completed.")
 
-    await application.initialize()
-    await application.start()
-    await application.updater.start_polling()
-
-    await asyncio.Event().wait()
+    # ✅ NEW CLEAN WAY (IMPORTANT FIX)
+    await application.run_polling()
 
 
 # -------------------------
