@@ -1,51 +1,64 @@
-from datetime import datetime, timedelta, timezone
-
 from database.subscriptions import (
-    create_subscription,
-    update_subscription,
+    activate_subscription as db_activate_subscription,
+    renew_subscription,
+    get_subscription,
+    is_subscription_active,
 )
-
-from database.channels import get_all_channels
 
 from logging_config import get_logger
 
 logger = get_logger(__name__)
 
 
-# -------------------------
-# ACTIVATE SUBSCRIPTION
-# -------------------------
-async def activate_subscription(user_id: int, plan_days: int):
+async def activate_subscription(
+    user_id: int,
+    plan_days: int,
+    plan_name: str = "Premium",
+):
     """
-    Activate user subscription after payment approval
+    Activate a new subscription.
     """
 
-    expiry_date = datetime.now(timezone.utc) + timedelta(days=plan_days)
-
-    await create_subscription(
+    expiry = await db_activate_subscription(
         user_id=user_id,
-        expiry_date=expiry_date,
-        active=True,
+        plan_name=plan_name,
+        duration_days=plan_days,
     )
 
     logger.info(
-        f"Subscription activated for user {user_id} until {expiry_date}"
+        f"Subscription activated for {user_id}"
     )
 
-    return expiry_date
+    return expiry
 
 
-# -------------------------
-# EXTEND SUBSCRIPTION
-# -------------------------
-async def extend_subscription(user_id: int, plan_days: int):
+async def extend_subscription(
+    user_id: int,
+    plan_days: int,
+):
+    """
+    Renew existing subscription.
+    """
 
-    expiry_date = datetime.now(timezone.utc) + timedelta(days=plan_days)
-
-    await update_subscription(
+    expiry = await renew_subscription(
         user_id=user_id,
-        expiry_date=expiry_date,
-        active=True,
+        duration_days=plan_days,
     )
 
-    return expiry_date
+    logger.info(
+        f"Subscription renewed for {user_id}"
+    )
+
+    return expiry
+
+
+async def get_user_subscription(
+    user_id: int,
+):
+    return await get_subscription(user_id)
+
+
+async def subscription_active(
+    user_id: int,
+):
+    return await is_subscription_active(user_id)
