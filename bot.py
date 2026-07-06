@@ -1,9 +1,7 @@
 import asyncio
 import logging
 
-from telegram.ext import (
-    Application,
-)
+from telegram.ext import Application
 
 from config import BOT_TOKEN
 from logging_config import setup_logging
@@ -12,8 +10,13 @@ from scheduler import start_scheduler
 
 logger = logging.getLogger(__name__)
 
+# Database
 from database.mongo import connect_database
 from database.admins import initialize_admins
+
+# Handlers
+from handlers.start import start_command
+from handlers.errors import error_handler
 
 from handlers.plans import plans_handler
 from handlers.profile import profile_callback
@@ -24,20 +27,14 @@ from handlers.broadcast import broadcast_handler
 from handlers.statistics import statistics_handler
 from handlers.admin import admin_handlers
 
-from telegram import Update
-from telegram.ext import ContextTypes
-from handlers.start import start_command
-from handlers.errors import error_handler
 
+# -------------------------
+# POST INIT
+# -------------------------
 async def post_init(application: Application):
-    """
-    Runs after bot startup.
-    """
-
     logger.info("Connecting to MongoDB...")
 
     await connect_database()
-
     await initialize_admins()
 
     start_scheduler()
@@ -45,8 +42,10 @@ async def post_init(application: Application):
     logger.info("Bot started successfully.")
 
 
+# -------------------------
+# APPLICATION BUILDER
+# -------------------------
 def build_application():
-
     application = (
         Application.builder()
         .token(BOT_TOKEN)
@@ -56,8 +55,13 @@ def build_application():
 
     return application
 
+
+# -------------------------
+# REGISTER HANDLERS
+# -------------------------
 async def register_handlers(application: Application):
 
+    # Commands / callbacks
     application.add_handler(start_command())
     application.add_handler(plans_handler())
     application.add_handler(profile_callback())
@@ -67,13 +71,20 @@ async def register_handlers(application: Application):
     application.add_handler(broadcast_handler())
     application.add_handler(statistics_handler())
 
+    # Admin handlers
     for handler in admin_handlers():
         application.add_handler(handler)
 
+    # Error handler
     application.add_error_handler(error_handler)
 
     logger.info("All handlers registered.")
-    async def main():
+
+
+# -------------------------
+# MAIN START FUNCTION
+# -------------------------
+async def main():
 
     setup_logging()
 
@@ -92,5 +103,10 @@ async def register_handlers(application: Application):
     await application.updater.start_polling()
 
     await asyncio.Event().wait()
-    if __name__ == "__main__":
+
+
+# -------------------------
+# RUN BOT
+# -------------------------
+if __name__ == "__main__":
     asyncio.run(main())
