@@ -1,52 +1,47 @@
 from telegram import Bot
+from telegram.error import TelegramError
 
 from config import BOT_TOKEN
 from database.channels import get_all_channels
-
 from logging_config import get_logger
 
 logger = get_logger(__name__)
 
-bot = Bot(BOT_TOKEN)
+bot = Bot(token=BOT_TOKEN)
 
 
-# -------------------------
-# GRANT ACCESS
-# -------------------------
 async def grant_channel_access(user_id: int):
     """
-    Add user to all premium channels
-    after successful payment
+    Generate one-time invite links for all premium channels.
     """
 
     channels = await get_all_channels()
 
     for channel in channels:
         try:
-            invite_link = await bot.create_chat_invite_link(
+            invite = await bot.create_chat_invite_link(
                 chat_id=channel["chat_id"],
                 member_limit=1,
-                creates_join_request=False,
             )
 
             await bot.send_message(
                 chat_id=user_id,
                 text=(
-                    f"🎉 You got access to: {channel['title']}\n\n"
-                    f"🔗 Join here:\n{invite_link.invite_link}"
+                    f"🎉 Access Granted\n\n"
+                    f"📢 {channel['title']}\n\n"
+                    f"{invite.invite_link}"
                 ),
             )
 
-        except Exception as e:
-            logger.exception(e)
+        except TelegramError as e:
+            logger.exception(
+                f"Failed to create invite for {channel['chat_id']}: {e}"
+            )
 
 
-# -------------------------
-# REVOKE ACCESS
-# -------------------------
 async def revoke_channel_access(user_id: int):
     """
-    Remove user from all channels after expiry
+    Remove expired user from all premium channels.
     """
 
     channels = await get_all_channels()
@@ -63,5 +58,7 @@ async def revoke_channel_access(user_id: int):
                 user_id=user_id,
             )
 
-        except Exception as e:
-            logger.exception(e)
+        except TelegramError as e:
+            logger.exception(
+                f"Failed removing {user_id} from {channel['chat_id']}: {e}"
+            )
