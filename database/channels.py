@@ -26,6 +26,10 @@ async def remove_channel(chat_id: int):
     )
 
 
-# ✅ THIS WAS MISSING (IMPORTANT)
 async def get_all_channels():
     return await channels_collection().find({}).to_list(length=None)
+
+
+# ✅ ADD THIS (REQUIRED FOR STATISTICS)
+async def total_channels():
+    return await channels_collection().count_documents({})
