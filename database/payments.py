@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+
 from database.mongo import get_database
 
 COLLECTION = "payments"
@@ -47,7 +48,37 @@ async def get_pending_payments():
     ).to_list(length=None)
 
 
-async def approve_payment(payment_id, admin_id: int):
+async def update_payment_status(
+    user_id: int,
+    status: str,
+    admin_id: int = None,
+    remarks: str = None,
+):
+    """
+    Update latest payment status of a user.
+    """
+
+    await payments_collection().update_one(
+        {
+            "user_id": user_id,
+            "status": "pending",
+        },
+        {
+            "$set": {
+                "status": status,
+                "admin_id": admin_id,
+                "remarks": remarks,
+                "updated_at": datetime.now(timezone.utc),
+            }
+        },
+        sort=[("created_at", -1)],
+    )
+
+
+async def approve_payment(
+    payment_id,
+    admin_id: int,
+):
     await payments_collection().update_one(
         {"_id": payment_id},
         {
@@ -97,3 +128,11 @@ async def total_revenue():
         return result[0]["total"]
 
     return 0
+
+
+async def total_payments():
+    """
+    Return total payment count.
+    """
+
+    return await payments_collection().count_documents({})
