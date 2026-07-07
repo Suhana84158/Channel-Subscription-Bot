@@ -1,4 +1,3 @@
-import asyncio
 import logging
 
 from telegram.ext import Application
@@ -8,16 +7,11 @@ from logging_config import setup_logging
 from keep_alive import keep_alive
 from scheduler import start_scheduler
 
-logger = logging.getLogger(__name__)
-
-# Database
 from database.mongo import connect_database
 from database.admins import initialize_admins
 
-# Handlers
 from handlers.start import start_command
 from handlers.errors import error_handler
-
 from handlers.upload_payment import payment_upload_handlers
 from handlers.plans import plans_handler
 from handlers.profile import profile_callback
@@ -27,14 +21,11 @@ from handlers.referral import referral_callback
 from handlers.broadcast import broadcast_handler
 from handlers.statistics import statistics_handler
 from handlers.admin import admin_handlers
-
-# Payment approval system
 from handlers.payment_approval import payment_approval_handlers
 
+logger = logging.getLogger(__name__)
 
-# -------------------------
-# POST INIT
-# -------------------------
+
 async def post_init(application: Application):
     logger.info("Connecting to MongoDB...")
 
@@ -46,26 +37,16 @@ async def post_init(application: Application):
     logger.info("Bot started successfully.")
 
 
-# -------------------------
-# APPLICATION BUILDER
-# -------------------------
 def build_application():
-    application = (
+    return (
         Application.builder()
         .token(BOT_TOKEN)
         .post_init(post_init)
         .build()
     )
 
-    return application
 
-
-# -------------------------
-# REGISTER HANDLERS
-# -------------------------
-async def register_handlers(application: Application):
-
-    # User handlers
+def register_handlers(application: Application):
     application.add_handler(start_command())
     application.add_handler(plans_handler())
     application.add_handler(profile_callback())
@@ -79,25 +60,18 @@ async def register_handlers(application: Application):
     application.add_handler(broadcast_handler())
     application.add_handler(statistics_handler())
 
-    # Admin handlers
     for handler in admin_handlers():
         application.add_handler(handler)
 
-    # Payment approval handlers
     for handler in payment_approval_handlers():
         application.add_handler(handler)
 
-    # Error handler
     application.add_error_handler(error_handler)
 
     logger.info("All handlers registered successfully.")
 
 
-# -------------------------
-# MAIN
-# -------------------------
-async def main():
-
+def main():
     setup_logging()
 
     logger.info("Starting Telegram Subscription Bot...")
@@ -106,16 +80,12 @@ async def main():
 
     application = build_application()
 
-    await register_handlers(application)
+    register_handlers(application)
 
     logger.info("Bot initialization completed.")
 
-    # ✅ NEW CLEAN WAY (IMPORTANT FIX)
-    await application.run_polling()
+    application.run_polling()
 
 
-# -------------------------
-# RUN
-# -------------------------
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
