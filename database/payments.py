@@ -30,7 +30,6 @@ async def create_payment(
     }
 
     result = await payments_collection().insert_one(payment)
-
     payment["_id"] = result.inserted_id
 
     return payment
@@ -54,15 +53,19 @@ async def update_payment_status(
     admin_id: int = None,
     remarks: str = None,
 ):
-    """
-    Update latest payment status of a user.
-    """
-
-    await payments_collection().update_one(
+    payment = await payments_collection().find_one(
         {
             "user_id": user_id,
             "status": "pending",
         },
+        sort=[("created_at", -1)],
+    )
+
+    if not payment:
+        return False
+
+    await payments_collection().update_one(
+        {"_id": payment["_id"]},
         {
             "$set": {
                 "status": status,
@@ -71,14 +74,12 @@ async def update_payment_status(
                 "updated_at": datetime.now(timezone.utc),
             }
         },
-        sort=[("created_at", -1)],
     )
 
+    return True
 
-async def approve_payment(
-    payment_id,
-    admin_id: int,
-):
+
+async def approve_payment(payment_id, admin_id: int):
     await payments_collection().update_one(
         {"_id": payment_id},
         {
@@ -131,8 +132,4 @@ async def total_revenue():
 
 
 async def total_payments():
-    """
-    Return total payment count.
-    """
-
     return await payments_collection().count_documents({})
