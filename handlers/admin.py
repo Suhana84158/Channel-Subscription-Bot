@@ -339,23 +339,23 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif query.data == "admin_payment_settings":
-    upi = await get_setting("upi_id")
-    name = await get_setting("upi_name")
-    qr = await get_setting("upi_qr_file_id")
+        upi = await get_setting("upi_id")
+        name = await get_setting("upi_name")
+        qr = await get_setting("upi_qr_file_id")
 
-    text = (
-        "💳 Payment Settings\n\n"
-        f"👤 UPI Name: {name['value'] if name else 'Not Set'}\n"
-        f"🏦 UPI ID: {upi['value'] if upi else 'Not Set'}\n"
-        f"🖼 QR Code: {'✅ Added' if qr else '❌ Not Added'}"
-    )
+        text = (
+            "💳 Payment Settings\n\n"
+            f"👤 UPI Name: {name['value'] if name else 'Not Set'}\n"
+            f"🏦 UPI ID: {upi['value'] if upi else 'Not Set'}\n"
+            f"🖼 QR Code: {'✅ Added' if qr else '❌ Not Added'}"
+        )
 
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("✏ Set UPI ID", callback_data="set_upi_id")],
-        [InlineKeyboardButton("👤 Set UPI Name", callback_data="set_upi_name")],
-        [InlineKeyboardButton("🖼 Upload QR", callback_data="set_upi_qr")],
-        [InlineKeyboardButton("⬅ Back", callback_data="admin_home")],
-    ])
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("✏ Set UPI ID", callback_data="set_upi_id")],
+            [InlineKeyboardButton("👤 Set UPI Name", callback_data="set_upi_name")],
+            [InlineKeyboardButton("🖼 Upload QR", callback_data="set_upi_qr")],
+            [InlineKeyboardButton("⬅ Back", callback_data="admin_home")],
+        ])
 
     await query.edit_message_text(text, reply_markup=keyboard)
 
