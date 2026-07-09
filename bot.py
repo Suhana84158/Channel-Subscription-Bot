@@ -22,6 +22,7 @@ from handlers.broadcast import broadcast_handler
 from handlers.statistics import statistics_handler
 from handlers.admin import admin_handlers
 from handlers.payment_approval import payment_approval_handlers
+from handlers.support import support_callback
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,7 @@ def register_handlers(application: Application):
     application.add_handler(referral_callback())
     application.add_handler(broadcast_handler())
     application.add_handler(statistics_handler())
+    application.add_handler(support_callback())
 
     for handler in admin_handlers():
         application.add_handler(handler)
