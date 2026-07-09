@@ -1,52 +1,50 @@
-from telegram import (
-    Update,
-)
-from telegram.ext import (
-    CallbackQueryHandler,
-    ContextTypes,
-)
+from telegram import Update
+from telegram.ext import CallbackQueryHandler, ContextTypes
 
 from database.users import get_user
 from database.subscriptions import get_subscription
 
 
-async def profile_handler(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-):
+async def profile_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-
     await query.answer()
 
     user = await get_user(query.from_user.id)
 
-    subscription = await get_subscription(
-        query.from_user.id
-    )
+    if not user:
+        await query.edit_message_text(
+            "❌ Profile not found.\nPlease send /start first."
+        )
+        return
+
+    subscription = await get_subscription(query.from_user.id)
 
     if subscription:
-        plan = subscription.get("plan", "N/A")
-        expiry = subscription.get("expiry_date", "N/A")
+        plan = subscription.get("plan", "No Plan")
+        expiry = str(subscription.get("expiry_date", "-"))
         status = "✅ Active" if subscription.get("active") else "❌ Expired"
     else:
         plan = "No Plan"
         expiry = "-"
         status = "Inactive"
 
+    username = user.get("username")
+    if username:
+        username = "@" + username
+    else:
+        username = "None"
+
     text = (
-        "👤 *My Profile*\n\n"
-        f"🆔 ID: `{user['user_id']}`\n"
-        f"👤 Name: {user['first_name']}\n"
-        f"📛 Username: @{user['username'] if user['username'] else 'None'}\n\n"
+        "👤 My Profile\n\n"
+        f"🆔 ID: {user.get('user_id')}\n"
+        f"👤 Name: {user.get('first_name')}\n"
+        f"📛 Username: {username}\n\n"
         f"💎 Plan: {plan}\n"
         f"📅 Expiry: {expiry}\n"
         f"📌 Status: {status}"
     )
 
-    await query.edit_message_text(
-        text=text,
-        parse_mode="Markdown",
-    )
+    await query.edit_message_text(text)
 
 
 def profile_callback():
