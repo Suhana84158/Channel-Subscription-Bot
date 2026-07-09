@@ -10,7 +10,7 @@ from scheduler import start_scheduler
 from database.mongo import connect_database
 from database.admins import initialize_admins
 
-from handlers.start import start_command
+from handlers.start import start_command, start_callback_handler
 from handlers.errors import error_handler
 from handlers.upload_payment import payment_upload_handlers
 from handlers.plans import plans_handler
@@ -49,6 +49,7 @@ def build_application():
 
 def register_handlers(application: Application):
     application.add_handler(start_command())
+    application.add_handler(start_callback_handler())
     application.add_handler(plans_handler())
     application.add_handler(profile_callback())
     application.add_handler(payment_handler())
