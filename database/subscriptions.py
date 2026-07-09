@@ -9,15 +9,13 @@ def subscriptions_collection():
     return get_database()[COLLECTION]
 
 
-async def activate_subscription(
-    user_id: int,
-    plan_name: str,
-    duration_days: int,
-):
-    """
-    Activate a new subscription or overwrite an existing one.
-    """
+def make_aware(dt):
+    if dt and dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
 
+
+async def activate_subscription(user_id: int, plan_name: str, duration_days: int):
     now = datetime.now(timezone.utc)
     expiry = now + timedelta(days=duration_days)
 
@@ -32,9 +30,7 @@ async def activate_subscription(
                 "expiry_date": expiry,
                 "updated_at": now,
             },
-            "$setOnInsert": {
-                "created_at": now,
-            },
+            "$setOnInsert": {"created_at": now},
         },
         upsert=True,
     )
@@ -43,35 +39,19 @@ async def activate_subscription(
 
 
 async def get_subscription(user_id: int):
-    """
-    Get subscription by user ID.
-    """
-
-    return await subscriptions_collection().find_one(
-        {"user_id": user_id}
-    )
+    return await subscriptions_collection().find_one({"user_id": user_id})
 
 
-async def renew_subscription(
-    user_id: int,
-    duration_days: int,
-):
-    """
-    Extend existing subscription.
-    """
-
+async def renew_subscription(user_id: int, duration_days: int):
     subscription = await get_subscription(user_id)
-
     now = datetime.now(timezone.utc)
 
-    if (
-        subscription
-        and subscription.get("expiry_date")
-        and subscription["expiry_date"] > now
-    ):
-        expiry = subscription["expiry_date"] + timedelta(
-            days=duration_days
-        )
+    expiry_date = None
+    if subscription:
+        expiry_date = make_aware(subscription.get("expiry_date"))
+
+    if expiry_date and expiry_date > now:
+        expiry = expiry_date + timedelta(days=duration_days)
     else:
         expiry = now + timedelta(days=duration_days)
 
@@ -79,10 +59,12 @@ async def renew_subscription(
         {"user_id": user_id},
         {
             "$set": {
+                "user_id": user_id,
                 "active": True,
                 "expiry_date": expiry,
                 "updated_at": now,
-            }
+            },
+            "$setOnInsert": {"created_at": now},
         },
         upsert=True,
     )
@@ -91,10 +73,6 @@ async def renew_subscription(
 
 
 async def expire_subscription(user_id: int):
-    """
-    Mark subscription as expired.
-    """
-
     await subscriptions_collection().update_one(
         {"user_id": user_id},
         {
@@ -107,47 +85,28 @@ async def expire_subscription(user_id: int):
 
 
 async def get_expired_subscriptions(now=None):
-    """
-    Return all expired active subscriptions.
-    """
-
     if now is None:
         now = datetime.now(timezone.utc)
 
     return await subscriptions_collection().find(
         {
             "active": True,
-            "expiry_date": {
-                "$lte": now,
-            },
+            "expiry_date": {"$lte": now},
         }
     ).to_list(length=None)
 
 
 async def get_all_subscriptions():
-    """
-    Return all subscriptions.
-    """
-
-    return await subscriptions_collection().find().to_list(
-        length=None
-    )
+    return await subscriptions_collection().find().to_list(length=None)
 
 
 async def is_subscription_active(user_id: int):
-    """
-    Check if subscription is currently active.
-    """
-
     subscription = await get_subscription(user_id)
 
-    if not subscription:
+    if not subscription or not subscription.get("active"):
         return False
 
-    if not subscription.get("active"):
-        return False
-
-    expiry = subscription.get("expiry_date")
+    expiry = make_aware(subscription.get("expiry_date"))
 
     if not expiry:
         return False
@@ -156,18 +115,8 @@ async def is_subscription_active(user_id: int):
 
 
 async def delete_subscription(user_id: int):
-    """
-    Delete subscription document.
-    """
-
-    await subscriptions_collection().delete_one(
-        {"user_id": user_id}
-    )
+    await subscriptions_collection().delete_one({"user_id": user_id})
 
 
 async def total_subscriptions():
-    """
-    Return total subscription count.
-    """
-
     return await subscriptions_collection().count_documents({})
