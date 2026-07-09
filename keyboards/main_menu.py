@@ -20,7 +20,7 @@ def get_main_menu():
             ),
             InlineKeyboardButton(
                 "🔄 Renew",
-                callback_data="renew",
+                callback_data="plans",
             ),
         ],
         [
