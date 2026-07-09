@@ -338,7 +338,7 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=back_keyboard(),
         )
 
-    elif query.data == "admin_payment_settings":
+        elif query.data == "admin_payment_settings":
         upi = await get_setting("upi_id")
         name = await get_setting("upi_name")
         qr = await get_setting("upi_qr_file_id")
@@ -357,7 +357,10 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("⬅ Back", callback_data="admin_home")],
         ])
 
-    await query.edit_message_text(text, reply_markup=keyboard)
+        await query.edit_message_text(
+            text,
+            reply_markup=keyboard,
+        )
 
     elif query.data == "set_upi_id":
         context.user_data.clear()
