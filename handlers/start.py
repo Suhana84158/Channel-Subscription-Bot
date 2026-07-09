@@ -1,5 +1,9 @@
 from telegram import Update
-from telegram.ext import CommandHandler, ContextTypes
+from telegram.ext import (
+    CommandHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+)
 
 from database.users import get_or_create_user
 from keyboards.main_menu import get_main_menu
@@ -38,5 +42,26 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def start_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    tg_user = query.from_user
+    await get_or_create_user(tg_user)
+
+    await query.edit_message_text(
+        text=WELCOME_MESSAGE,
+        reply_markup=get_main_menu(),
+        parse_mode="Markdown",
+    )
+
+
 def start_command():
     return CommandHandler("start", start)
+
+
+def start_callback_handler():
+    return CallbackQueryHandler(
+        start_callback,
+        pattern="^start$",
+    )
