@@ -20,6 +20,7 @@ from database.users import (
     unban_user,
 )
 from database.payments import total_revenue
+from database.settings import get_setting, set_setting
 from database.subscriptions import (
     get_subscription,
     expire_subscription,
@@ -51,6 +52,7 @@ def admin_keyboard():
         [InlineKeyboardButton("➕ Add Channel/Group", callback_data="admin_add_channel")],
         [InlineKeyboardButton("📋 Channel List", callback_data="admin_channels")],
         [InlineKeyboardButton("📊 Statistics", callback_data="admin_stats")],
+        [InlineKeyboardButton("💳 Payment Settings", callback_data="admin_payment_settings")],
         [InlineKeyboardButton("📢 Broadcast", callback_data="admin_broadcast")],
         [InlineKeyboardButton("👮 Admin Commands", callback_data="admin_commands")],
     ])
@@ -336,6 +338,42 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=back_keyboard(),
         )
 
+    elif query.data == "admin_payment_settings":
+    upi = await get_setting("upi_id")
+    name = await get_setting("upi_name")
+    qr = await get_setting("upi_qr_file_id")
+
+    text = (
+        "💳 Payment Settings\n\n"
+        f"👤 UPI Name: {name['value'] if name else 'Not Set'}\n"
+        f"🏦 UPI ID: {upi['value'] if upi else 'Not Set'}\n"
+        f"🖼 QR Code: {'✅ Added' if qr else '❌ Not Added'}"
+    )
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("✏ Set UPI ID", callback_data="set_upi_id")],
+        [InlineKeyboardButton("👤 Set UPI Name", callback_data="set_upi_name")],
+        [InlineKeyboardButton("🖼 Upload QR", callback_data="set_upi_qr")],
+        [InlineKeyboardButton("⬅ Back", callback_data="admin_home")],
+    ])
+
+    await query.edit_message_text(text, reply_markup=keyboard)
+
+    elif query.data == "set_upi_id":
+        context.user_data.clear()
+        context.user_data["waiting_upi_id"] = True
+        await query.edit_message_text("Send new UPI ID")
+
+    elif query.data == "set_upi_name":
+        context.user_data.clear()
+        context.user_data["waiting_upi_name"] = True
+        await query.edit_message_text("Send new UPI Name")
+
+    elif query.data == "set_upi_qr":
+        context.user_data.clear()
+        context.user_data["waiting_upi_qr"] = True
+        await query.edit_message_text("Send the QR Code image")
+
     elif query.data == "admin_stats":
         users = await total_users()
         channels = await total_channels()
@@ -380,6 +418,18 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def receive_admin_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await is_admin(update.effective_user.id):
+        return
+
+    if context.user_data.get("waiting_upi_id"):
+        await set_setting("upi_id", update.message.text.strip())
+        context.user_data.clear()
+        await update.message.reply_text("✅ UPI ID updated successfully.")
+        return
+
+    if context.user_data.get("waiting_upi_name"):
+        await set_setting("upi_name", update.message.text.strip())
+        context.user_data.clear()
+        await update.message.reply_text("✅ UPI Name updated successfully.")
         return
 
     if context.user_data.get("give_sub_user") or context.user_data.get("extend_sub_user"):
@@ -504,6 +554,26 @@ async def receive_admin_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 "5m:10, 1h:20, 1d:99"
             )
 
+async def receive_upi_qr(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await is_admin(update.effective_user.id):
+        return
+
+    if not context.user_data.get("waiting_upi_qr"):
+        return
+
+    if not update.message.photo:
+        await update.message.reply_text("❌ Please send a QR image.")
+        return
+
+    file_id = update.message.photo[-1].file_id
+
+    await set_setting("upi_qr_file_id", file_id)
+
+    context.user_data.clear()
+
+    await update.message.reply_text(
+        "✅ QR Code updated successfully."
+    )
 
 async def add_channel_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await is_admin(update.effective_user.id):
@@ -625,7 +695,8 @@ def admin_handlers():
         CommandHandler("removeadmin", remove_admin_command),
         CommandHandler("addchannel", add_channel_start),
         CommandHandler("removechannel", remove_channel_command),
-        CallbackQueryHandler(admin_buttons, pattern=r"^(admin_|user_)"),
+        CallbackQueryHandler(admin_buttons, pattern=r"^(admin_|user_|set_upi_)"),
         MessageHandler(filters.FORWARDED, receive_channel_forward),
+        MessageHandler(filters.PHOTO, receive_upi_qr),
         MessageHandler(filters.TEXT & ~filters.COMMAND, receive_admin_text),
     ]
