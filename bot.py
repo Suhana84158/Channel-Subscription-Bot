@@ -1,6 +1,6 @@
 import logging
 
-from telegram.ext import Application
+from telegram.ext import Application, MessageHandler, filters
 
 from config import BOT_TOKEN
 from logging_config import setup_logging
@@ -20,7 +20,7 @@ from handlers.subscription import subscription_callback
 from handlers.referral import referral_callback
 from handlers.broadcast import broadcast_handler
 from handlers.statistics import statistics_handler
-from handlers.admin import admin_handlers
+from handlers.admin import admin_handlers, receive_upi_qr
 from handlers.payment_approval import payment_approval_handlers
 from handlers.support import support_callback, support_reply_handler
 
