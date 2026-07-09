@@ -191,7 +191,6 @@ async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=admin_keyboard(),
     )
 
-
 async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -236,13 +235,7 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "🎁 Give Subscription\n\n"
             "Send duration.\n\n"
             "Examples:\n"
-            "1m\n"
-            "30m\n"
-            "1h\n"
-            "1d\n"
-            "30d\n"
-            "90d\n"
-            "365d",
+            "1m\n30m\n1h\n1d\n30d\n90d\n365d",
             reply_markup=back_keyboard(),
         )
 
@@ -256,13 +249,7 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "⏳ Extend Subscription\n\n"
             "Send duration.\n\n"
             "Examples:\n"
-            "1m\n"
-            "30m\n"
-            "1h\n"
-            "1d\n"
-            "30d\n"
-            "90d\n"
-            "365d",
+            "1m\n30m\n1h\n1d\n30d\n90d\n365d",
             reply_markup=back_keyboard(),
         )
 
@@ -319,9 +306,7 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
             ])
 
-        keyboard.append([
-            InlineKeyboardButton("⬅ Back", callback_data="admin_back")
-        ])
+        keyboard.append([InlineKeyboardButton("⬅ Back", callback_data="admin_home")])
 
         await query.edit_message_text(
             text,
@@ -338,7 +323,7 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=back_keyboard(),
         )
 
-        elif query.data == "admin_payment_settings":
+    elif query.data == "admin_payment_settings":
         upi = await get_setting("upi_id")
         name = await get_setting("upi_name")
         qr = await get_setting("upi_qr_file_id")
@@ -357,25 +342,34 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("⬅ Back", callback_data="admin_home")],
         ])
 
-        await query.edit_message_text(
-            text,
-            reply_markup=keyboard,
-        )
+        await query.edit_message_text(text, reply_markup=keyboard)
 
     elif query.data == "set_upi_id":
         context.user_data.clear()
         context.user_data["waiting_upi_id"] = True
-        await query.edit_message_text("Send new UPI ID")
+
+        await query.edit_message_text(
+            "🏦 Send the new UPI ID.",
+            reply_markup=back_keyboard(),
+        )
 
     elif query.data == "set_upi_name":
         context.user_data.clear()
         context.user_data["waiting_upi_name"] = True
-        await query.edit_message_text("Send new UPI Name")
+
+        await query.edit_message_text(
+            "👤 Send the new UPI Name.",
+            reply_markup=back_keyboard(),
+        )
 
     elif query.data == "set_upi_qr":
         context.user_data.clear()
         context.user_data["waiting_upi_qr"] = True
-        await query.edit_message_text("Send the QR Code image")
+
+        await query.edit_message_text(
+            "🖼 Send the QR Code image.",
+            reply_markup=back_keyboard(),
+        )
 
     elif query.data == "admin_stats":
         users = await total_users()
@@ -414,7 +408,8 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif query.data in ["admin_back", "admin_home"]:
         context.user_data.clear()
-        await query.message.reply_text(
+
+        await query.edit_message_text(
             "🛠 Admin Panel\n\nChoose an option:",
             reply_markup=admin_keyboard(),
         )
