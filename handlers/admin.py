@@ -695,6 +695,5 @@ def admin_handlers():
         CommandHandler("removechannel", remove_channel_command),
         CallbackQueryHandler(admin_buttons, pattern=r"^(admin_|user_|set_upi_)"),
         MessageHandler(filters.FORWARDED, receive_channel_forward),
-        MessageHandler(filters.PHOTO, receive_upi_qr),
         MessageHandler(filters.TEXT & ~filters.COMMAND, receive_admin_text),
     ]
