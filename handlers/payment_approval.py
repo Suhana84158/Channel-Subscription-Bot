@@ -66,6 +66,7 @@ async def approve_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 duration_minutes=duration_minutes,
             )
             action = "activated"
+            ist_expiry = expiry.astimezone(ZoneInfo("Asia/Kolkata"))
 
         await grant_channel_access(user_id)
 
@@ -83,7 +84,7 @@ async def approve_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"🎉 Payment Approved!\n\n"
                 f"Plan: {plan_name}\n"
                 f"Subscription {action}.\n"
-                f"Expiry:\n{expiry}"
+                f"Expiry: {ist_expiry.strftime('%d-%m-%Y %I:%M:%S %p IST')}"
             ),
         )
 
