@@ -59,6 +59,10 @@ def register_handlers(application: Application):
 
     # Broadcast must be before payment photo upload handler
     application.add_handler(broadcast_handler())
+    application.add_handler(
+    MessageHandler(filters.PHOTO, receive_upi_qr),
+    group=-1,
+)
 
     for handler in payment_upload_handlers():
         application.add_handler(handler)
