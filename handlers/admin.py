@@ -224,6 +224,40 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user = await get_user(user_id)
         await show_user_details(query, user)
 
+    elif query.data.startswith("user_give_sub_"):
+    user_id = int(query.data.replace("user_give_sub_", ""))
+
+    context.user_data.clear()
+    context.user_data["give_sub_user"] = user_id
+
+    await query.edit_message_text(
+        "🎁 Give Subscription\n\n"
+        "Send duration.\n\n"
+        "Examples:\n"
+        "1d\n"
+        "30d\n"
+        "90d\n"
+        "365d",
+        reply_markup=back_keyboard(),
+    )
+
+elif query.data.startswith("user_extend_sub_"):
+    user_id = int(query.data.replace("user_extend_sub_", ""))
+
+    context.user_data.clear()
+    context.user_data["extend_sub_user"] = user_id
+
+    await query.edit_message_text(
+        "⏳ Extend Subscription\n\n"
+        "Send duration.\n\n"
+        "Examples:\n"
+        "1d\n"
+        "30d\n"
+        "90d\n"
+        "365d",
+        reply_markup=back_keyboard(),
+    )
+
     elif query.data.startswith("user_remove_sub_"):
         user_id = int(query.data.replace("user_remove_sub_", ""))
 
@@ -342,6 +376,76 @@ async def receive_admin_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if not await is_admin(update.effective_user.id):
         return
 
+        if context.user_data.get("give_sub_user") or context.user_data.get("extend_sub_user"):
+        duration_text = update.message.text.strip().lower()
+
+        try:
+            duration_minutes, unit = parse_plan_time(duration_text)
+
+            if duration_minutes % 1440 == 0:
+                duration_days = duration_minutes // 1440
+            else:
+                duration_days = 0
+
+            if context.user_data.get("give_sub_user"):
+                user_id = context.user_data.get("give_sub_user")
+
+                expiry = await activate_subscription(
+                    user_id=user_id,
+                    plan_name="Admin Gift",
+                    duration_days=duration_days,
+                    duration_minutes=duration_minutes,
+                )
+
+                action_text = "given"
+
+            else:
+                user_id = context.user_data.get("extend_sub_user")
+
+                expiry = await renew_subscription(
+                    user_id=user_id,
+                    duration_days=duration_days,
+                    duration_minutes=duration_minutes,
+                )
+
+                action_text = "extended"
+
+            await grant_channel_access(user_id)
+
+            context.user_data.clear()
+
+            expiry_text = format_time(expiry)
+
+            await update.message.reply_text(
+                f"✅ Subscription {action_text} successfully!\n\n"
+                f"👤 User ID: {user_id}\n"
+                f"⏳ Duration: {duration_text}\n"
+                f"📅 Expiry: {expiry_text}"
+            )
+
+            try:
+                await context.bot.send_message(
+                    chat_id=user_id,
+                    text=(
+                        "🎁 Admin Subscription Update\n\n"
+                        f"Your subscription has been {action_text}.\n"
+                        f"Duration: {duration_text}\n"
+                        f"Expiry: {expiry_text}"
+                    ),
+                )
+            except Exception:
+                pass
+
+        except Exception as e:
+            await update.message.reply_text(
+                f"❌ Invalid duration or error.\n\n"
+                f"Use format like:\n"
+                f"1m, 30m, 1h, 1d, 30d\n\n"
+                f"Error: {e}"
+            )
+
+        return
+        
     if context.user_data.get("waiting_user_search"):
         search = update.message.text.strip()
 
