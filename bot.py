@@ -53,12 +53,15 @@ def register_handlers(application: Application):
     application.add_handler(profile_callback())
     application.add_handler(payment_handler())
 
+    application.add_handler(subscription_callback())
+    application.add_handler(referral_callback())
+
+    # Broadcast must be before payment photo upload handler
+    application.add_handler(broadcast_handler())
+
     for handler in payment_upload_handlers():
         application.add_handler(handler)
 
-    application.add_handler(subscription_callback())
-    application.add_handler(referral_callback())
-    application.add_handler(broadcast_handler())
     application.add_handler(statistics_handler())
     application.add_handler(support_callback())
     application.add_handler(support_reply_handler())
