@@ -287,7 +287,6 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif query.data == "admin_commands":
-        elif query.data == "admin_commands":
         await query.edit_message_text(
             "👮 Admin Commands\n\n"
             "/admin\n"
