@@ -224,39 +224,45 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user = await get_user(user_id)
         await show_user_details(query, user)
 
-    elif query.data.startswith("user_give_sub_"):
-    user_id = int(query.data.replace("user_give_sub_", ""))
+        elif query.data.startswith("user_give_sub_"):
+        user_id = int(query.data.replace("user_give_sub_", ""))
 
-    context.user_data.clear()
-    context.user_data["give_sub_user"] = user_id
+        context.user_data.clear()
+        context.user_data["give_sub_user"] = user_id
 
-    await query.edit_message_text(
-        "🎁 Give Subscription\n\n"
-        "Send duration.\n\n"
-        "Examples:\n"
-        "1d\n"
-        "30d\n"
-        "90d\n"
-        "365d",
-        reply_markup=back_keyboard(),
-    )
+        await query.edit_message_text(
+            "🎁 Give Subscription\n\n"
+            "Send duration.\n\n"
+            "Examples:\n"
+            "1m\n"
+            "30m\n"
+            "1h\n"
+            "1d\n"
+            "30d\n"
+            "90d\n"
+            "365d",
+            reply_markup=back_keyboard(),
+        )
 
-elif query.data.startswith("user_extend_sub_"):
-    user_id = int(query.data.replace("user_extend_sub_", ""))
+    elif query.data.startswith("user_extend_sub_"):
+        user_id = int(query.data.replace("user_extend_sub_", ""))
 
-    context.user_data.clear()
-    context.user_data["extend_sub_user"] = user_id
+        context.user_data.clear()
+        context.user_data["extend_sub_user"] = user_id
 
-    await query.edit_message_text(
-        "⏳ Extend Subscription\n\n"
-        "Send duration.\n\n"
-        "Examples:\n"
-        "1d\n"
-        "30d\n"
-        "90d\n"
-        "365d",
-        reply_markup=back_keyboard(),
-    )
+        await query.edit_message_text(
+            "⏳ Extend Subscription\n\n"
+            "Send duration.\n\n"
+            "Examples:\n"
+            "1m\n"
+            "30m\n"
+            "1h\n"
+            "1d\n"
+            "30d\n"
+            "90d\n"
+            "365d",
+            reply_markup=back_keyboard(),
+        )
 
     elif query.data.startswith("user_remove_sub_"):
         user_id = int(query.data.replace("user_remove_sub_", ""))
