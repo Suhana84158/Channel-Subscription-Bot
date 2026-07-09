@@ -6,6 +6,15 @@ from database.users import get_user
 from database.subscriptions import get_subscription
 
 
+def format_ist(dt):
+    if not dt:
+        return "-"
+
+    return dt.astimezone(
+        ZoneInfo("Asia/Kolkata")
+    ).strftime("%d-%m-%Y %I:%M:%S %p IST")
+
+
 async def profile_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -22,14 +31,7 @@ async def profile_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if subscription:
         plan = subscription.get("plan", "No Plan")
-        expiry_date = subscription.get("expiry_date")
-
-if expiry_date:
-    expiry = expiry_date.astimezone(
-        ZoneInfo("Asia/Kolkata")
-    ).strftime("%d-%m-%Y %I:%M:%S %p IST")
-else:
-    expiry = "-"
+        expiry = format_ist(subscription.get("expiry_date"))
         status = "✅ Active" if subscription.get("active") else "❌ Expired"
     else:
         plan = "No Plan"
