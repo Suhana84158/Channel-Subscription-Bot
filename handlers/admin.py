@@ -287,6 +287,7 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif query.data == "admin_commands":
+        elif query.data == "admin_commands":
         await query.edit_message_text(
             "👮 Admin Commands\n\n"
             "/admin\n"
@@ -299,13 +300,12 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=back_keyboard(),
         )
 
-    
-elif query.data in ["admin_back", "admin_home"]:
-    context.user_data.clear()
-    await query.message.reply_text(
-        "🛠 Admin Panel\n\nChoose an option:",
-        reply_markup=admin_keyboard(),
-    )
+    elif query.data in ["admin_back", "admin_home"]:
+        context.user_data.clear()
+        await query.message.reply_text(
+            "🛠 Admin Panel\n\nChoose an option:",
+            reply_markup=admin_keyboard(),
+        )
 
 async def receive_admin_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await is_admin(update.effective_user.id):
