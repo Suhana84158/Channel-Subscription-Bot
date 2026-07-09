@@ -3,7 +3,8 @@ from telegram.ext import CallbackQueryHandler, ContextTypes
 
 from database.admins import is_admin
 from database.payments import update_payment_status
-from services.subscription_service import activate_subscription
+from database.subscriptions import get_subscription
+from services.subscription_service import activate_subscription, extend_subscription
 from services.channel_service import grant_channel_access
 
 
@@ -38,10 +39,20 @@ async def approve_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
             admin_id=admin_id,
         )
 
-        await activate_subscription(
-            user_id=user_id,
-            plan_days=plan_days,
-        )
+        subscription = await get_subscription(user_id)
+
+        if subscription and subscription.get("active"):
+            expiry = await extend_subscription(
+                user_id=user_id,
+                plan_days=plan_days,
+            )
+            action_text = "renewed"
+        else:
+            expiry = await activate_subscription(
+                user_id=user_id,
+                plan_days=plan_days,
+            )
+            action_text = "activated"
 
         await grant_channel_access(user_id)
 
@@ -49,14 +60,18 @@ async def approve_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
             query,
             f"✅ Payment Approved\n\n"
             f"User ID: {user_id}\n"
-            f"Duration: {plan_days} days",
+            f"Duration: {plan_days} days\n"
+            f"Subscription: {action_text}\n"
+            f"Expiry: {expiry}",
         )
 
         await context.bot.send_message(
             chat_id=user_id,
             text=(
                 "🎉 Payment Approved!\n\n"
-                f"Your subscription is active for {plan_days} days."
+                f"Your subscription has been {action_text}.\n"
+                f"Duration added: {plan_days} days\n"
+                f"Expiry: {expiry}"
             ),
         )
 
