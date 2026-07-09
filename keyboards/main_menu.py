@@ -6,31 +6,31 @@ def get_main_menu():
         [
             InlineKeyboardButton(
                 "📋 Plans",
-                callback_data="plans"
+                callback_data="plans",
             ),
             InlineKeyboardButton(
-    "💳 Buy",
-    callback_data="plans"
-),
+                "💳 Buy",
+                callback_data="plans",
+            ),
         ],
         [
             InlineKeyboardButton(
                 "👤 My Profile",
-                callback_data="profile"
+                callback_data="profile",
             ),
             InlineKeyboardButton(
                 "🔄 Renew",
-                callback_data="renew"
+                callback_data="renew",
             ),
         ],
         [
             InlineKeyboardButton(
                 "🎁 Referral",
-                callback_data="referral"
+                callback_data="referral",
             ),
             InlineKeyboardButton(
                 "📞 Support",
-                callback_data="support"
+                callback_data="support",
             ),
         ],
     ]
