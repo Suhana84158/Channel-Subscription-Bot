@@ -1,4 +1,4 @@
-from telegram import Bot
+from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import TelegramError
 
 from config import BOT_TOKEN
@@ -37,7 +37,6 @@ async def grant_channel_access(user_id: int):
 
 async def revoke_channel_access(user_id: int):
     channels = await get_all_channels()
-
     removed = 0
 
     for channel in channels:
@@ -67,8 +66,12 @@ async def revoke_channel_access(user_id: int):
                 text=(
                     "⏰ Your subscription has expired.\n\n"
                     "Access to premium channel/group has been removed.\n"
-                    "Use 🔄 Renew to continue."
+                    "Use 🔄 Renew Plan to continue."
                 ),
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("🔄 Renew Plan", callback_data="plans")],
+                    [InlineKeyboardButton("👤 My Profile", callback_data="profile")],
+                ]),
             )
     except TelegramError:
         pass
