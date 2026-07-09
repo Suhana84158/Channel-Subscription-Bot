@@ -3,17 +3,19 @@ from telegram.ext import (
     CommandHandler,
     CallbackQueryHandler,
     MessageHandler,
-    ConversationHandler,
     ContextTypes,
     filters,
 )
 
 from database.admins import is_admin, add_admin, remove_admin
-from database.channels import add_channel, remove_channel, get_all_channels, total_channels
+from database.channels import (
+    add_channel,
+    remove_channel,
+    get_all_channels,
+    total_channels,
+)
 from database.users import total_users
 from database.payments import total_revenue
-
-WAIT_CHANNEL = 1
 
 
 def admin_keyboard():
@@ -23,6 +25,42 @@ def admin_keyboard():
         [InlineKeyboardButton("📊 Statistics", callback_data="admin_stats")],
         [InlineKeyboardButton("👮 Admin Commands", callback_data="admin_commands")],
     ])
+
+
+def parse_plan_time(time_text: str):
+    time_text = time_text.strip().lower()
+
+    if time_text.endswith("m"):
+        return int(time_text[:-1]), "minutes"
+
+    if time_text.endswith("h"):
+        return int(time_text[:-1]) * 60, "hours"
+
+    if time_text.endswith("d"):
+        return int(time_text[:-1]) * 1440, "days"
+
+    raise ValueError("Invalid time format")
+
+
+def parse_plans(text: str):
+    plans = []
+
+    parts = text.split(",")
+
+    for part in parts:
+        duration_text, price_text = part.strip().split(":")
+
+        duration_minutes, unit = parse_plan_time(duration_text)
+
+        plans.append({
+            "duration_text": duration_text.strip(),
+            "duration_minutes": duration_minutes,
+            "duration_days": max(1, duration_minutes // 1440),
+            "price": int(price_text.strip()),
+            "unit": unit,
+        })
+
+    return plans
 
 
 async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -63,14 +101,24 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-        keyboard = []
         text = "📋 Added Channels/Groups:\n\n"
+        keyboard = []
 
         for channel in channels:
             chat_id = channel.get("chat_id")
             title = channel.get("title", "Unknown")
+            plans = channel.get("plans", [])
 
-            text += f"• {title}\nID: {chat_id}\n\n"
+            text += f"• {title}\nID: {chat_id}\n"
+
+            if plans:
+                for plan in plans:
+                    text += f"  - {plan['duration_text']} = ₹{plan['price']}\n"
+            else:
+                text += "  - No plans set\n"
+
+            text += "\n"
+
             keyboard.append([
                 InlineKeyboardButton(
                     f"❌ Remove {title}",
@@ -165,15 +213,70 @@ async def receive_channel_forward(update: Update, context: ContextTypes.DEFAULT_
         )
         return
 
-    await add_channel(chat_id=chat.id, title=chat.title or "Unknown")
-
+    context.user_data["pending_channel"] = {
+        "chat_id": chat.id,
+        "title": chat.title or "Unknown",
+    }
     context.user_data["waiting_channel"] = False
+    context.user_data["waiting_plans"] = True
 
     await message.reply_text(
-        f"✅ Channel/Group added successfully!\n\n"
+        f"✅ Channel detected!\n\n"
         f"Title: {chat.title}\n"
-        f"ID: {chat.id}"
+        f"ID: {chat.id}\n\n"
+        f"Now send plans:\n\n"
+        f"Example:\n"
+        f"5m:10, 1h:20, 1d:99\n\n"
+        f"m = minutes\n"
+        f"h = hours\n"
+        f"d = days"
     )
+
+
+async def receive_channel_plans(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await is_admin(update.effective_user.id):
+        return
+
+    if not context.user_data.get("waiting_plans"):
+        return
+
+    pending_channel = context.user_data.get("pending_channel")
+
+    if not pending_channel:
+        context.user_data["waiting_plans"] = False
+        await update.message.reply_text("❌ Channel data missing. Please try again.")
+        return
+
+    try:
+        plans = parse_plans(update.message.text)
+
+        await add_channel(
+            chat_id=pending_channel["chat_id"],
+            title=pending_channel["title"],
+            plans=plans,
+        )
+
+        context.user_data["waiting_plans"] = False
+        context.user_data.pop("pending_channel", None)
+
+        text = (
+            "✅ Channel/Group added successfully!\n\n"
+            f"Title: {pending_channel['title']}\n"
+            f"ID: {pending_channel['chat_id']}\n\n"
+            "Plans:\n"
+        )
+
+        for plan in plans:
+            text += f"• {plan['duration_text']} = ₹{plan['price']}\n"
+
+        await update.message.reply_text(text)
+
+    except Exception:
+        await update.message.reply_text(
+            "❌ Invalid plan format.\n\n"
+            "Use this format:\n"
+            "5m:10, 1h:20, 1d:99"
+        )
 
 
 async def remove_channel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -242,4 +345,5 @@ def admin_handlers():
         CommandHandler("removechannel", remove_channel_command),
         CallbackQueryHandler(admin_buttons, pattern=r"^admin_"),
         MessageHandler(filters.FORWARDED, receive_channel_forward),
+        MessageHandler(filters.TEXT & ~filters.COMMAND, receive_channel_plans),
     ]
