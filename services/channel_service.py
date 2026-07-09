@@ -11,10 +11,6 @@ bot = Bot(token=BOT_TOKEN)
 
 
 async def grant_channel_access(user_id: int):
-    """
-    Generate one-time invite links for all premium channels.
-    """
-
     channels = await get_all_channels()
 
     for channel in channels:
@@ -27,24 +23,22 @@ async def grant_channel_access(user_id: int):
             await bot.send_message(
                 chat_id=user_id,
                 text=(
-                    f"🎉 Access Granted\n\n"
-                    f"📢 {channel['title']}\n\n"
+                    "🎉 Access Granted\n\n"
+                    f"📢 {channel.get('title', 'Premium Channel')}\n\n"
                     f"{invite.invite_link}"
                 ),
             )
 
         except TelegramError as e:
             logger.exception(
-                f"Failed to create invite for {channel['chat_id']}: {e}"
+                f"Failed to create invite for {channel.get('chat_id')}: {e}"
             )
 
 
 async def revoke_channel_access(user_id: int):
-    """
-    Remove expired user from all premium channels.
-    """
-
     channels = await get_all_channels()
+
+    removed = 0
 
     for channel in channels:
         try:
@@ -56,9 +50,27 @@ async def revoke_channel_access(user_id: int):
             await bot.unban_chat_member(
                 chat_id=channel["chat_id"],
                 user_id=user_id,
+                only_if_banned=True,
             )
+
+            removed += 1
 
         except TelegramError as e:
             logger.exception(
-                f"Failed removing {user_id} from {channel['chat_id']}: {e}"
+                f"Failed removing {user_id} from {channel.get('chat_id')}: {e}"
             )
+
+    try:
+        if removed > 0:
+            await bot.send_message(
+                chat_id=user_id,
+                text=(
+                    "⏰ Your subscription has expired.\n\n"
+                    "Access to premium channel/group has been removed.\n"
+                    "Use 🔄 Renew to continue."
+                ),
+            )
+    except TelegramError:
+        pass
+
+    logger.info(f"Expired user {user_id} removed from {removed} channels.")
