@@ -7,6 +7,7 @@ from telegram.ext import (
     filters,
 )
 
+from config import ADMIN_IDS
 from database.admins import get_all_admins
 
 WAIT_SUPPORT = 1
@@ -17,10 +18,9 @@ async def support_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     await query.edit_message_text(
-        "📞 *Support*\n\n"
+        "📞 Support\n\n"
         "Please type your issue here.\n\n"
-        "Your message will be sent to admin.",
-        parse_mode="Markdown",
+        "Your message will be sent to admin."
     )
 
     return WAIT_SUPPORT
@@ -30,29 +30,45 @@ async def receive_support_message(update: Update, context: ContextTypes.DEFAULT_
     user = update.effective_user
     message_text = update.message.text
 
-    admins = await get_all_admins()
+    admin_ids = set(ADMIN_IDS)
+
+    try:
+        admins = await get_all_admins()
+        for admin in admins:
+            admin_id = admin.get("admin_id") or admin.get("user_id")
+            if admin_id:
+                admin_ids.add(int(admin_id))
+    except Exception:
+        pass
 
     text = (
         "📞 New Support Request\n\n"
         f"👤 User: {user.first_name}\n"
-        f"🆔 User ID: `{user.id}`\n"
+        f"🆔 User ID: {user.id}\n"
         f"📛 Username: @{user.username if user.username else 'None'}\n\n"
         f"💬 Message:\n{message_text}"
     )
 
-    for admin in admins:
+    sent = 0
+
+    for admin_id in admin_ids:
         try:
             await context.bot.send_message(
-                chat_id=admin["admin_id"],
+                chat_id=admin_id,
                 text=text,
-                parse_mode="Markdown",
             )
-        except:
-            pass
+            sent += 1
+        except Exception as e:
+            print(f"Support message send failed to {admin_id}: {e}")
 
-    await update.message.reply_text(
-        "✅ Your support request has been sent to admin."
-    )
+    if sent > 0:
+        await update.message.reply_text(
+            "✅ Your support request has been sent to admin."
+        )
+    else:
+        await update.message.reply_text(
+            "❌ Support message send nahi hua. Admin ID check karo."
+        )
 
     return ConversationHandler.END
 
