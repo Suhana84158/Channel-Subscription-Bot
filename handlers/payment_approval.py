@@ -22,6 +22,12 @@ async def safe_edit(query, text: str):
             pass
 
 
+def format_ist(dt):
+    return dt.astimezone(
+        ZoneInfo("Asia/Kolkata")
+    ).strftime("%d-%m-%Y %I:%M:%S %p IST")
+
+
 async def approve_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -34,14 +40,10 @@ async def approve_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
         data = query.data.split("_")
 
         user_id = int(data[1])
-
         duration_minutes = int(data[2])
         plan_name = data[3]
 
-        if duration_minutes % 1440 == 0:
-            plan_days = duration_minutes // 1440
-        else:
-            plan_days = 0
+        plan_days = duration_minutes // 1440 if duration_minutes % 1440 == 0 else 0
 
         await update_payment_status(
             user_id=user_id,
@@ -66,7 +68,8 @@ async def approve_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 duration_minutes=duration_minutes,
             )
             action = "activated"
-            ist_expiry = expiry.astimezone(ZoneInfo("Asia/Kolkata"))
+
+        expiry_ist = format_ist(expiry)
 
         await grant_channel_access(user_id)
 
@@ -75,16 +78,16 @@ async def approve_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"✅ Payment Approved\n\n"
             f"User: {user_id}\n"
             f"Plan: {plan_name}\n"
-            f"Expiry: {expiry}"
+            f"Expiry: {expiry_ist}"
         )
 
         await context.bot.send_message(
             chat_id=user_id,
             text=(
-                f"🎉 Payment Approved!\n\n"
+                "🎉 Payment Approved!\n\n"
                 f"Plan: {plan_name}\n"
                 f"Subscription {action}.\n"
-                f"Expiry: {ist_expiry.strftime('%d-%m-%Y %I:%M:%S %p IST')}"
+                f"Expiry: {expiry_ist}"
             ),
         )
 
