@@ -20,8 +20,16 @@ from database.users import (
     unban_user,
 )
 from database.payments import total_revenue
-from database.subscriptions import get_subscription, expire_subscription
-from services.channel_service import revoke_channel_access
+from database.subscriptions import (
+    get_subscription,
+    expire_subscription,
+    activate_subscription,
+    renew_subscription,
+)
+from services.channel_service import (
+    revoke_channel_access,
+    grant_channel_access,
+)
 
 
 IST = ZoneInfo("Asia/Kolkata")
@@ -54,23 +62,47 @@ def back_keyboard():
 
 
 def user_action_keyboard(user_id: int, banned: bool):
-    keyboard = []
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "🎁 Give Subscription",
+                callback_data=f"user_give_sub_{user_id}",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "⏳ Extend Subscription",
+                callback_data=f"user_extend_sub_{user_id}",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "❌ Remove Subscription",
+                callback_data=f"user_remove_sub_{user_id}",
+            )
+        ],
+    ]
 
     if banned:
         keyboard.append([
-            InlineKeyboardButton("✅ Unban User", callback_data=f"user_unban_{user_id}")
+            InlineKeyboardButton(
+                "✅ Unban User",
+                callback_data=f"user_unban_{user_id}",
+            )
         ])
     else:
         keyboard.append([
-            InlineKeyboardButton("🚫 Ban User", callback_data=f"user_ban_{user_id}")
+            InlineKeyboardButton(
+                "🚫 Ban User",
+                callback_data=f"user_ban_{user_id}",
+            )
         ])
 
     keyboard.append([
-        InlineKeyboardButton("❌ Remove Subscription", callback_data=f"user_remove_sub_{user_id}")
-    ])
-
-    keyboard.append([
-        InlineKeyboardButton("⬅ Back", callback_data="admin_users")
+        InlineKeyboardButton(
+            "⬅ Back",
+            callback_data="admin_users",
+        )
     ])
 
     return InlineKeyboardMarkup(keyboard)
