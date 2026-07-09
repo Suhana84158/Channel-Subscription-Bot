@@ -9,9 +9,9 @@ def get_main_menu():
                 callback_data="plans"
             ),
             InlineKeyboardButton(
-                "💳 Buy",
-                callback_data="buy"
-            ),
+    "💳 Buy",
+    callback_data="plans"
+),
         ],
         [
             InlineKeyboardButton(
