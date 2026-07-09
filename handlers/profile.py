@@ -1,5 +1,6 @@
 from telegram import Update
 from telegram.ext import CallbackQueryHandler, ContextTypes
+from zoneinfo import ZoneInfo
 
 from database.users import get_user
 from database.subscriptions import get_subscription
@@ -21,7 +22,14 @@ async def profile_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if subscription:
         plan = subscription.get("plan", "No Plan")
-        expiry = str(subscription.get("expiry_date", "-"))
+        expiry_date = subscription.get("expiry_date")
+
+if expiry_date:
+    expiry = expiry_date.astimezone(
+        ZoneInfo("Asia/Kolkata")
+    ).strftime("%d-%m-%Y %I:%M:%S %p IST")
+else:
+    expiry = "-"
         status = "✅ Active" if subscription.get("active") else "❌ Expired"
     else:
         plan = "No Plan"
