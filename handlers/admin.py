@@ -1,3 +1,6 @@
+from datetime import timezone
+from zoneinfo import ZoneInfo
+
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     CommandHandler,
@@ -21,12 +24,26 @@ from database.subscriptions import get_subscription, expire_subscription
 from services.channel_service import revoke_channel_access
 
 
+IST = ZoneInfo("Asia/Kolkata")
+
+
+def format_time(dt):
+    if not dt:
+        return "-"
+
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+
+    return dt.astimezone(IST).strftime("%d-%m-%Y %I:%M:%S %p IST")
+
+
 def admin_keyboard():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("👥 User Management", callback_data="admin_users")],
         [InlineKeyboardButton("➕ Add Channel/Group", callback_data="admin_add_channel")],
         [InlineKeyboardButton("📋 Channel List", callback_data="admin_channels")],
         [InlineKeyboardButton("📊 Statistics", callback_data="admin_stats")],
+        [InlineKeyboardButton("📢 Broadcast", callback_data="admin_broadcast")],
         [InlineKeyboardButton("👮 Admin Commands", callback_data="admin_commands")],
     ])
 
@@ -38,17 +55,26 @@ def back_keyboard():
 
 
 def user_action_keyboard(user_id: int, banned: bool):
-    buttons = []
+    keyboard = []
 
     if banned:
-        buttons.append([InlineKeyboardButton("✅ Unban User", callback_data=f"user_unban_{user_id}")])
+        keyboard.append([
+            InlineKeyboardButton("✅ Unban User", callback_data=f"user_unban_{user_id}")
+        ])
     else:
-        buttons.append([InlineKeyboardButton("🚫 Ban User", callback_data=f"user_ban_{user_id}")])
+        keyboard.append([
+            InlineKeyboardButton("🚫 Ban User", callback_data=f"user_ban_{user_id}")
+        ])
 
-    buttons.append([InlineKeyboardButton("❌ Remove Subscription", callback_data=f"user_remove_sub_{user_id}")])
-    buttons.append([InlineKeyboardButton("⬅ Back", callback_data="admin_users")])
+    keyboard.append([
+        InlineKeyboardButton("❌ Remove Subscription", callback_data=f"user_remove_sub_{user_id}")
+    ])
 
-    return InlineKeyboardMarkup(buttons)
+    keyboard.append([
+        InlineKeyboardButton("⬅ Back", callback_data="admin_users")
+    ])
+
+    return InlineKeyboardMarkup(keyboard)
 
 
 def parse_plan_time(time_text: str):
@@ -56,8 +82,10 @@ def parse_plan_time(time_text: str):
 
     if time_text.endswith("m"):
         return int(time_text[:-1]), "minutes"
+
     if time_text.endswith("h"):
         return int(time_text[:-1]) * 60, "hours"
+
     if time_text.endswith("d"):
         return int(time_text[:-1]) * 1440, "days"
 
@@ -82,12 +110,12 @@ def parse_plans(text: str):
     return plans
 
 
-async def show_user_details(query, user):
+async def build_user_details_text(user):
     subscription = await get_subscription(user["user_id"])
 
     if subscription:
         plan = subscription.get("plan", "No Plan")
-        expiry = subscription.get("expiry_date", "-")
+        expiry = format_time(subscription.get("expiry_date"))
         sub_status = "✅ Active" if subscription.get("active") else "❌ Expired"
     else:
         plan = "No Plan"
@@ -96,17 +124,23 @@ async def show_user_details(query, user):
 
     banned = bool(user.get("banned"))
 
-    text = (
+    return (
         "👤 User Details\n\n"
         f"🆔 ID: {user.get('user_id')}\n"
-        f"👤 Name: {user.get('first_name')}\n"
+        f"👤 Name: {user.get('first_name') or '-'}\n"
         f"📛 Username: @{user.get('username') if user.get('username') else 'None'}\n"
         f"🚫 Banned: {'Yes' if banned else 'No'}\n"
-        f"📝 Reason: {user.get('ban_reason') or '-'}\n\n"
+        f"📝 Reason: {user.get('ban_reason') or '-'}\n"
+        f"📅 Joined: {format_time(user.get('joined_at'))}\n\n"
         f"💎 Plan: {plan}\n"
         f"📅 Expiry: {expiry}\n"
         f"📌 Status: {sub_status}"
     )
+
+
+async def show_user_details(query, user):
+    text = await build_user_details_text(user)
+    banned = bool(user.get("banned"))
 
     await query.edit_message_text(
         text,
@@ -134,7 +168,9 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if query.data == "admin_users":
+        context.user_data.clear()
         context.user_data["waiting_user_search"] = True
+
         await query.edit_message_text(
             "👥 User Management\n\nSend User ID or @username to search.",
             reply_markup=back_keyboard(),
@@ -142,25 +178,34 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif query.data.startswith("user_ban_"):
         user_id = int(query.data.replace("user_ban_", ""))
+
         await ban_user(user_id, "Banned by admin")
         await revoke_channel_access(user_id)
+
         user = await get_user(user_id)
         await show_user_details(query, user)
 
     elif query.data.startswith("user_unban_"):
         user_id = int(query.data.replace("user_unban_", ""))
+
         await unban_user(user_id)
+
         user = await get_user(user_id)
         await show_user_details(query, user)
 
     elif query.data.startswith("user_remove_sub_"):
         user_id = int(query.data.replace("user_remove_sub_", ""))
+
         await expire_subscription(user_id)
         await revoke_channel_access(user_id)
+
         user = await get_user(user_id)
         await show_user_details(query, user)
-            elif query.data == "admin_add_channel":
+
+    elif query.data == "admin_add_channel":
+        context.user_data.clear()
         context.user_data["waiting_channel"] = True
+
         await query.edit_message_text(
             "📢 Forward any message from your channel/group.\n\n"
             "⚠ Bot must be admin there."
@@ -188,7 +233,7 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             if plans:
                 for plan in plans:
-                    text += f"  - {plan['duration_text']} = ₹{plan['price']}\n"
+                    text += f"  - {plan.get('duration_text')} = ₹{plan.get('price')}\n"
             else:
                 text += "  - No plans set\n"
 
@@ -201,14 +246,24 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
             ])
 
-        keyboard.append([InlineKeyboardButton("⬅ Back", callback_data="admin_back")])
+        keyboard.append([
+            InlineKeyboardButton("⬅ Back", callback_data="admin_back")
+        ])
 
-        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+        await query.edit_message_text(
+            text,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
 
     elif query.data.startswith("admin_remove_"):
         chat_id = int(query.data.replace("admin_remove_", ""))
+
         await remove_channel(chat_id)
-        await query.edit_message_text("✅ Channel/Group removed successfully.", reply_markup=back_keyboard())
+
+        await query.edit_message_text(
+            "✅ Channel/Group removed successfully.",
+            reply_markup=back_keyboard(),
+        )
 
     elif query.data == "admin_stats":
         users = await total_users()
@@ -223,19 +278,31 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=back_keyboard(),
         )
 
+    elif query.data == "admin_broadcast":
+        await query.edit_message_text(
+            "📢 Broadcast\n\n"
+            "Use command:\n"
+            "/broadcast\n\n"
+            "Then send text, photo, video, document, or forwarded message.",
+            reply_markup=back_keyboard(),
+        )
+
     elif query.data == "admin_commands":
         await query.edit_message_text(
             "👮 Admin Commands\n\n"
+            "/admin\n"
             "/addadmin USER_ID\n"
             "/removeadmin USER_ID\n"
             "/addchannel\n"
             "/removechannel CHAT_ID\n"
-            "/stats",
+            "/stats\n"
+            "/broadcast",
             reply_markup=back_keyboard(),
         )
 
     elif query.data == "admin_back":
         context.user_data.clear()
+
         await query.edit_message_text(
             "🛠 Admin Panel\n\nChoose an option:",
             reply_markup=admin_keyboard(),
@@ -260,27 +327,14 @@ async def receive_admin_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
         context.user_data["waiting_user_search"] = False
 
         if not user:
-            await update.message.reply_text("❌ User not found.")
+            await update.message.reply_text(
+                "❌ User not found.",
+                reply_markup=back_keyboard(),
+            )
             return
 
-        fake_query = type("FakeQuery", (), {
-            "edit_message_text": update.message.reply_text
-        })()
-
-        subscription = await get_subscription(user["user_id"])
+        text = await build_user_details_text(user)
         banned = bool(user.get("banned"))
-
-        text = (
-            "👤 User Details\n\n"
-            f"🆔 ID: {user.get('user_id')}\n"
-            f"👤 Name: {user.get('first_name')}\n"
-            f"📛 Username: @{user.get('username') if user.get('username') else 'None'}\n"
-            f"🚫 Banned: {'Yes' if banned else 'No'}\n"
-            f"📝 Reason: {user.get('ban_reason') or '-'}\n\n"
-            f"💎 Plan: {subscription.get('plan', 'No Plan') if subscription else 'No Plan'}\n"
-            f"📅 Expiry: {subscription.get('expiry_date', '-') if subscription else '-'}\n"
-            f"📌 Status: {'✅ Active' if subscription and subscription.get('active') else 'No active subscription'}"
-        )
 
         await update.message.reply_text(
             text,
@@ -333,8 +387,13 @@ async def add_channel_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ You are not authorized.")
         return
 
+    context.user_data.clear()
     context.user_data["waiting_channel"] = True
-    await update.message.reply_text("📢 Forward any message from your channel/group.\n\n⚠ Bot must be admin there.")
+
+    await update.message.reply_text(
+        "📢 Forward any message from your channel/group.\n\n"
+        "⚠ Bot must be admin there."
+    )
 
 
 async def receive_channel_forward(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -352,10 +411,17 @@ async def receive_channel_forward(update: Update, context: ContextTypes.DEFAULT_
         chat = getattr(origin, "chat", None)
 
     if chat is None:
-        await message.reply_text("❌ Channel/group detect nahi hua.\n\nPlease channel/group se message forward karo.")
+        await message.reply_text(
+            "❌ Channel/group detect nahi hua.\n\n"
+            "Please channel/group se message forward karo."
+        )
         return
 
-    context.user_data["pending_channel"] = {"chat_id": chat.id, "title": chat.title or "Unknown"}
+    context.user_data["pending_channel"] = {
+        "chat_id": chat.id,
+        "title": chat.title or "Unknown",
+    }
+
     context.user_data["waiting_channel"] = False
     context.user_data["waiting_plans"] = True
 
@@ -365,7 +431,10 @@ async def receive_channel_forward(update: Update, context: ContextTypes.DEFAULT_
         f"ID: {chat.id}\n\n"
         "Now send plans:\n\n"
         "Example:\n"
-        "5m:10, 1h:20, 1d:99"
+        "5m:10, 1h:20, 1d:99\n\n"
+        "m = minutes\n"
+        "h = hours\n"
+        "d = days"
     )
 
 
