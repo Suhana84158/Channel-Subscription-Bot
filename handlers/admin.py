@@ -224,7 +224,7 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user = await get_user(user_id)
         await show_user_details(query, user)
 
-        elif query.data.startswith("user_give_sub_"):
+    elif query.data.startswith("user_give_sub_"):
         user_id = int(query.data.replace("user_give_sub_", ""))
 
         context.user_data.clear()
