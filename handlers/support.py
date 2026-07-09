@@ -1,4 +1,4 @@
-from telegram import Update
+from telegram import Update, ForceReply
 from telegram.ext import (
     CallbackQueryHandler,
     MessageHandler,
@@ -12,65 +12,118 @@ from database.admins import get_all_admins
 
 WAIT_SUPPORT = 1
 
+# message_id -> user_id
+SUPPORT_REPLY_MAP = {}
+
 
 async def support_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
     await query.edit_message_text(
-        "📞 Support\n\n"
-        "Please type your issue here.\n\n"
-        "Your message will be sent to admin."
+        "📞 *Support*\n\n"
+        "Please send your problem.\n\n"
+        "Admin will reply soon.",
+        parse_mode="Markdown",
     )
 
     return WAIT_SUPPORT
 
 
-async def receive_support_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def receive_support_message(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
     user = update.effective_user
-    message_text = update.message.text
+    message = update.message
 
     admin_ids = set(ADMIN_IDS)
 
     try:
         admins = await get_all_admins()
+
         for admin in admins:
             admin_id = admin.get("admin_id") or admin.get("user_id")
+
             if admin_id:
                 admin_ids.add(int(admin_id))
+
     except Exception:
         pass
 
     text = (
-        "📞 New Support Request\n\n"
-        f"👤 User: {user.first_name}\n"
-        f"🆔 User ID: {user.id}\n"
-        f"📛 Username: @{user.username if user.username else 'None'}\n\n"
-        f"💬 Message:\n{message_text}"
+        "📞 NEW SUPPORT REQUEST\n\n"
+        f"👤 {user.first_name}\n"
+        f"🆔 {user.id}\n"
+        f"📛 @{user.username if user.username else 'None'}\n\n"
+        f"💬 {message.text}"
     )
 
     sent = 0
 
     for admin_id in admin_ids:
         try:
-            await context.bot.send_message(
+            admin_msg = await context.bot.send_message(
                 chat_id=admin_id,
                 text=text,
+                reply_markup=ForceReply(selective=True),
             )
-            sent += 1
-        except Exception as e:
-            print(f"Support message send failed to {admin_id}: {e}")
 
-    if sent > 0:
-        await update.message.reply_text(
-            "✅ Your support request has been sent to admin."
+            SUPPORT_REPLY_MAP[
+                admin_msg.message_id
+            ] = user.id
+
+            sent += 1
+
+        except Exception as e:
+            print(e)
+
+    if sent:
+        await message.reply_text(
+            "✅ Your support request has been sent."
         )
     else:
-        await update.message.reply_text(
-            "❌ Support message send nahi hua. Admin ID check karo."
+        await message.reply_text(
+            "❌ Failed to send support request."
         )
 
     return ConversationHandler.END
+    async def admin_reply_handler(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    message = update.message
+
+    if not message.reply_to_message:
+        return
+
+    replied_id = message.reply_to_message.message_id
+
+    user_id = SUPPORT_REPLY_MAP.get(replied_id)
+
+    if not user_id:
+        return
+
+    reply_text = message.text
+
+    try:
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=(
+                "📞 *Admin Reply*\n\n"
+                f"{reply_text}"
+            ),
+            parse_mode="Markdown",
+        )
+
+        await message.reply_text(
+            "✅ Reply sent to user."
+        )
+
+    except Exception as e:
+        await message.reply_text(
+            f"❌ Failed to send reply:\n{e}"
+        )
 
 
 def support_callback():
@@ -90,4 +143,11 @@ def support_callback():
             ]
         },
         fallbacks=[],
+    )
+
+
+def support_reply_handler():
+    return MessageHandler(
+        filters.TEXT & filters.REPLY,
+        admin_reply_handler,
     )
