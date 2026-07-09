@@ -1,8 +1,5 @@
 from telegram import Update
-from telegram.ext import (
-    CommandHandler,
-    ContextTypes,
-)
+from telegram.ext import CommandHandler, ContextTypes
 
 from database.users import get_or_create_user
 from keyboards.main_menu import get_main_menu
@@ -22,13 +19,17 @@ Choose an option from the menu below.
 """
 
 
-async def start(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-):
-    user = update.effective_user
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    tg_user = update.effective_user
 
-    await get_or_create_user(user)
+    user = await get_or_create_user(tg_user)
+
+    if user.get("banned"):
+        await update.message.reply_text(
+            "🚫 You are banned from using this bot.\n\n"
+            "If you think this is a mistake, contact admin."
+        )
+        return
 
     await update.message.reply_text(
         text=WELCOME_MESSAGE,
@@ -38,7 +39,4 @@ async def start(
 
 
 def start_command():
-    return CommandHandler(
-        "start",
-        start,
-    )
+    return CommandHandler("start", start)
