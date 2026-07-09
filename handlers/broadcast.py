@@ -1,11 +1,5 @@
 from telegram import Update
-from telegram.ext import (
-    CommandHandler,
-    MessageHandler,
-    ConversationHandler,
-    ContextTypes,
-    filters,
-)
+from telegram.ext import CommandHandler, MessageHandler, ConversationHandler, ContextTypes, filters
 
 from database.admins import is_admin
 from database.users import users_collection
@@ -19,33 +13,44 @@ async def broadcast_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
 
     await update.message.reply_text(
-        "📢 Send the message you want to broadcast.\n\n"
-        "You can send text, photo, video, document, or forward any message."
+        "📢 Send broadcast message.\n\n"
+        "Text, photo, video, document sab chalega."
     )
-
     return WAIT_BROADCAST
+
+
+async def send_to_user(bot, chat_id, msg):
+    caption = msg.caption or ""
+
+    if msg.photo:
+        await bot.send_photo(chat_id=chat_id, photo=msg.photo[-1].file_id, caption=caption)
+    elif msg.video:
+        await bot.send_video(chat_id=chat_id, video=msg.video.file_id, caption=caption)
+    elif msg.document:
+        await bot.send_document(chat_id=chat_id, document=msg.document.file_id, caption=caption)
+    elif msg.animation:
+        await bot.send_animation(chat_id=chat_id, animation=msg.animation.file_id, caption=caption)
+    elif msg.text:
+        await bot.send_message(chat_id=chat_id, text=msg.text)
+    else:
+        await bot.copy_message(chat_id=chat_id, from_chat_id=msg.chat_id, message_id=msg.message_id)
 
 
 async def send_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await is_admin(update.effective_user.id):
         return ConversationHandler.END
 
+    msg = update.message
     users = await users_collection().find().to_list(length=None)
 
     success = 0
     failed = 0
 
-    progress = await update.message.reply_text(
-        f"📢 Broadcast started...\n\nTotal users: {len(users)}"
-    )
+    progress = await msg.reply_text(f"📢 Broadcast started...\nTotal users: {len(users)}")
 
     for user in users:
         try:
-            await context.bot.copy_message(
-                chat_id=user["user_id"],
-                from_chat_id=update.message.chat_id,
-                message_id=update.message.message_id,
-            )
+            await send_to_user(context.bot, user["user_id"], msg)
             success += 1
         except Exception:
             failed += 1
@@ -62,9 +67,7 @@ async def send_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def broadcast_handler():
     return ConversationHandler(
-        entry_points=[
-            CommandHandler("broadcast", broadcast_start),
-        ],
+        entry_points=[CommandHandler("broadcast", broadcast_start)],
         states={
             WAIT_BROADCAST: [
                 MessageHandler(filters.ALL, send_broadcast),
