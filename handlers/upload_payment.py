@@ -18,7 +18,6 @@ async def handle_payment_screenshot(update: Update, context: ContextTypes.DEFAUL
     if not update.message or not update.message.photo:
         return
 
-    # ✅ Admin photo ko payment screenshot mat samjho
     if await is_admin(update.effective_user.id):
         return
 
@@ -33,9 +32,13 @@ async def handle_payment_screenshot(update: Update, context: ContextTypes.DEFAUL
 
     photo = update.message.photo[-1].file_id
 
+    duration_minutes = int(plan.get("duration_minutes", 1440))
+    duration_text = plan.get("duration_text", "1d")
+    plan_name = plan.get("name", "Premium").replace("_", "-")
+
     await create_payment(
         user_id=user.id,
-        plan=plan["name"],
+        plan=plan_name,
         amount=plan["price"],
         screenshot_file_id=photo,
     )
@@ -44,7 +47,7 @@ async def handle_payment_screenshot(update: Update, context: ContextTypes.DEFAUL
         [
             InlineKeyboardButton(
                 "✅ Approve",
-                callback_data=f"approve_{user.id}_{plan['days']}",
+                callback_data=f"approve_{user.id}_{duration_minutes}_{plan_name}",
             ),
             InlineKeyboardButton(
                 "❌ Reject",
@@ -57,9 +60,9 @@ async def handle_payment_screenshot(update: Update, context: ContextTypes.DEFAUL
         "🆕 New Payment\n\n"
         f"👤 User: {user.first_name}\n"
         f"🆔 User ID: {user.id}\n"
-        f"📦 Plan: {plan['name']}\n"
+        f"📦 Plan: {plan_name}\n"
         f"💰 Amount: ₹{plan['price']}\n"
-        f"📅 Duration: {plan['days']} Days"
+        f"⏳ Duration: {duration_text}"
     )
 
     admins = await get_all_admins()
