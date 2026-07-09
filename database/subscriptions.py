@@ -15,9 +15,18 @@ def make_aware(dt):
     return dt
 
 
-async def activate_subscription(user_id: int, plan_name: str, duration_days: int):
+async def activate_subscription(
+    user_id: int,
+    plan_name: str,
+    duration_days: int = 0,
+    duration_minutes: int = 0,
+):
     now = datetime.now(timezone.utc)
-    expiry = now + timedelta(days=duration_days)
+
+    if duration_minutes > 0:
+        expiry = now + timedelta(minutes=duration_minutes)
+    else:
+        expiry = now + timedelta(days=duration_days)
 
     await subscriptions_collection().update_one(
         {"user_id": user_id},
@@ -42,7 +51,11 @@ async def get_subscription(user_id: int):
     return await subscriptions_collection().find_one({"user_id": user_id})
 
 
-async def renew_subscription(user_id: int, duration_days: int):
+async def renew_subscription(
+    user_id: int,
+    duration_days: int = 0,
+    duration_minutes: int = 0,
+):
     subscription = await get_subscription(user_id)
     now = datetime.now(timezone.utc)
 
@@ -50,10 +63,15 @@ async def renew_subscription(user_id: int, duration_days: int):
     if subscription:
         expiry_date = make_aware(subscription.get("expiry_date"))
 
-    if expiry_date and expiry_date > now:
-        expiry = expiry_date + timedelta(days=duration_days)
+    if duration_minutes > 0:
+        add_time = timedelta(minutes=duration_minutes)
     else:
-        expiry = now + timedelta(days=duration_days)
+        add_time = timedelta(days=duration_days)
+
+    if expiry_date and expiry_date > now:
+        expiry = expiry_date + add_time
+    else:
+        expiry = now + add_time
 
     await subscriptions_collection().update_one(
         {"user_id": user_id},
