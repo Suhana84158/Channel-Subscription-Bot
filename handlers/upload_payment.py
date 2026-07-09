@@ -1,23 +1,11 @@
-from telegram import (
-    Update,
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
-)
-from telegram.ext import (
-    MessageHandler,
-    CallbackQueryHandler,
-    ContextTypes,
-    filters,
-)
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import MessageHandler, CallbackQueryHandler, ContextTypes, filters
 
 from database.payments import create_payment
-from database.admins import get_all_admins
+from database.admins import get_all_admins, is_admin
 
 
-async def upload_payment_callback(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-):
+async def upload_payment_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
@@ -26,15 +14,15 @@ async def upload_payment_callback(
     )
 
 
-async def handle_payment_screenshot(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-):
-    if not update.message.photo:
+async def handle_payment_screenshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not update.message.photo:
+        return
+
+    # ✅ Admin photo ko payment screenshot mat samjho
+    if await is_admin(update.effective_user.id):
         return
 
     user = update.effective_user
-
     plan = context.user_data.get("selected_plan")
 
     if plan is None:
@@ -52,20 +40,18 @@ async def handle_payment_screenshot(
         screenshot_file_id=photo,
     )
 
-    keyboard = InlineKeyboardMarkup(
+    keyboard = InlineKeyboardMarkup([
         [
-            [
-                InlineKeyboardButton(
-                    "✅ Approve",
-                    callback_data=f"approve_{user.id}_{plan['days']}",
-                ),
-                InlineKeyboardButton(
-                    "❌ Reject",
-                    callback_data=f"reject_{user.id}",
-                ),
-            ]
+            InlineKeyboardButton(
+                "✅ Approve",
+                callback_data=f"approve_{user.id}_{plan['days']}",
+            ),
+            InlineKeyboardButton(
+                "❌ Reject",
+                callback_data=f"reject_{user.id}",
+            ),
         ]
-    )
+    ])
 
     caption = (
         "🆕 New Payment\n\n"
