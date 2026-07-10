@@ -20,7 +20,7 @@ from database.users import (
     unban_user,
 )
 from database.payments import total_revenue
-from database.settings import get_setting, set_setting
+from database.settings import get_setting, get_setting_value, set_setting
 from database.subscriptions import (
     get_subscription,
     expire_subscription,
@@ -374,6 +374,85 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=back_keyboard(),
         )
 
+        elif query.data == "admin_bot_settings":
+        bot_name = await get_setting_value(
+            "bot_name",
+            "Subscription Bot",
+        )
+        support_username = await get_setting_value(
+            "support_username",
+            "Not Set",
+        )
+        currency = await get_setting_value(
+            "currency",
+            "INR",
+        )
+        timezone_name = await get_setting_value(
+            "timezone",
+            "Asia/Kolkata",
+        )
+        reminder_days = await get_setting_value(
+            "reminder_days",
+            1,
+        )
+
+        text = (
+            "⚙️ Bot Settings\n\n"
+            f"🤖 Bot Name: {bot_name}\n"
+            f"📞 Support: {support_username or 'Not Set'}\n"
+            f"💵 Currency: {currency}\n"
+            f"🕒 Timezone: {timezone_name}\n"
+            f"🔔 Reminder: {reminder_days} day(s)"
+        )
+
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "🤖 Bot Name",
+                    callback_data="set_bot_name",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "💬 Welcome Message",
+                    callback_data="set_welcome_message",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "📞 Support Username",
+                    callback_data="set_support_username",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "💵 Currency",
+                    callback_data="set_currency",
+                ),
+                InlineKeyboardButton(
+                    "🕒 Timezone",
+                    callback_data="set_timezone",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    "🔔 Reminder Days",
+                    callback_data="set_reminder_days",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "⬅ Back",
+                    callback_data="admin_home",
+                )
+            ],
+        ])
+
+        await query.edit_message_text(
+            text,
+            reply_markup=keyboard,
+        )
+    
     elif query.data == "admin_stats":
         users = await total_users()
         channels = await total_channels()
