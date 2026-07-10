@@ -475,7 +475,7 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data.clear()
         context.user_data["waiting_currency"] = True
 
-      await query.edit_message_text(
+        await query.edit_message_text(
             "💵 Send currency.\n\nExample:\nINR",
             reply_markup=back_keyboard(),
         )
