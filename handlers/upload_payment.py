@@ -1,11 +1,23 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import MessageHandler, CallbackQueryHandler, ContextTypes, filters
+from telegram import (
+    Update,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+)
+from telegram.ext import (
+    MessageHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+    filters,
+)
 
 from database.payments import create_payment
 from database.admins import get_all_admins, is_admin
 
 
-async def upload_payment_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def upload_payment_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
     query = update.callback_query
     await query.answer()
 
@@ -14,7 +26,10 @@ async def upload_payment_callback(update: Update, context: ContextTypes.DEFAULT_
     )
 
 
-async def handle_payment_screenshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_payment_screenshot(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
     if not update.message or not update.message.photo:
         return
 
@@ -33,57 +48,58 @@ async def handle_payment_screenshot(update: Update, context: ContextTypes.DEFAUL
     photo = update.message.photo[-1].file_id
 
     duration_minutes = int(plan.get("duration_minutes", 1440))
-duration_text = plan.get("duration_text", "1d")
-plan_name = plan.get("name", "Premium").replace("_", "-")
+    duration_text = plan.get("duration_text", "1d")
+    plan_name = plan.get("name", "Premium").replace("_", "-")
 
-payment = await create_payment(
-    user_id=user.id,
-    plan=plan_name,
-    amount=plan["price"],
-    screenshot_file_id=photo,
-    duration_minutes=duration_minutes,
-    duration_text=duration_text,
-)
+    payment = await create_payment(
+        user_id=user.id,
+        plan=plan_name,
+        amount=plan["price"],
+        screenshot_file_id=photo,
+        duration_minutes=duration_minutes,
+        duration_text=duration_text,
+    )
 
-payment_id = str(payment["_id"])
+    payment_id = str(payment["_id"])
 
-keyboard = InlineKeyboardMarkup([
-    [
-        InlineKeyboardButton(
-            "✅ Approve",
-            callback_data=f"pay_approve_{payment_id}",
-        ),
-        InlineKeyboardButton(
-            "❌ Reject",
-            callback_data=f"pay_reject_{payment_id}",
-        ),
-    ]
-])
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "✅ Approve",
+                callback_data=f"pay_approve_{payment_id}",
+            ),
+            InlineKeyboardButton(
+                "❌ Reject",
+                callback_data=f"pay_reject_{payment_id}",
+            ),
+        ]
+    ])
 
-caption = (
-    "🆕 New Payment\n\n"
-    f"👤 User: {user.first_name}\n"
-    f"🆔 User ID: {user.id}\n"
-    f"📦 Plan: {plan_name}\n"
-    f"💰 Amount: ₹{plan['price']}\n"
-    f"⏳ Duration: {duration_text}"
-)
+    caption = (
+        "🆕 New Payment\n\n"
+        f"👤 User: {user.first_name}\n"
+        f"🆔 User ID: {user.id}\n"
+        f"📦 Plan: {plan_name}\n"
+        f"💰 Amount: ₹{plan['price']}\n"
+        f"⏳ Duration: {duration_text}"
+    )
 
-admins = await get_all_admins()
+    admins = await get_all_admins()
 
-for admin in admins:
-    try:
-        await context.bot.send_photo(
-            chat_id=admin["admin_id"],
-            photo=photo,
-            caption=caption,
-            reply_markup=keyboard,
-        )
+    for admin in admins:
+        try:
+            await context.bot.send_photo(
+                chat_id=admin["admin_id"],
+                photo=photo,
+                caption=caption,
+                reply_markup=keyboard,
+            )
         except Exception:
             pass
 
     await update.message.reply_text(
-        "✅ Payment submitted successfully.\n\nWaiting for admin approval."
+        "✅ Payment submitted successfully.\n\n"
+        "Waiting for admin approval."
     )
 
 
