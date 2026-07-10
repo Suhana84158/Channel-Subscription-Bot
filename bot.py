@@ -71,10 +71,10 @@ def register_handlers(application: Application):
     application.add_handler(support_callback())
     application.add_handler(support_reply_handler())
 
-    for handler in admin_handlers():
+    for handler in payment_approval_handlers():
         application.add_handler(handler)
 
-    for handler in payment_approval_handlers():
+    for handler in admin_handlers():
         application.add_handler(handler)
 
     application.add_error_handler(error_handler)
