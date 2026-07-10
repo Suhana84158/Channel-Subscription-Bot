@@ -54,6 +54,7 @@ def admin_keyboard():
         [InlineKeyboardButton("📊 Statistics", callback_data="admin_stats")],
         [InlineKeyboardButton("💳 Payment Settings", callback_data="admin_payment_settings")],
         [InlineKeyboardButton("📨 Pending Payments", callback_data="admin_pending_payments")],
+        [InlineKeyboardButton("📜 Payment History", callback_data="admin_payment_history")],
         [InlineKeyboardButton("📢 Broadcast", callback_data="admin_broadcast")],
         [InlineKeyboardButton("👮 Admin Commands", callback_data="admin_commands")],
     ])
