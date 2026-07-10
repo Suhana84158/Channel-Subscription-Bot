@@ -374,7 +374,7 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=back_keyboard(),
         )
 
-        elif query.data == "admin_bot_settings":
+    elif query.data == "admin_bot_settings":
         bot_name = await get_setting_value(
             "bot_name",
             "Subscription Bot",
@@ -452,7 +452,60 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text,
             reply_markup=keyboard,
         )
-    
+
+    elif query.data == "set_bot_name":
+    context.user_data.clear()
+    context.user_data["waiting_bot_name"] = True
+
+    await query.edit_message_text(
+        "🤖 Send the new Bot Name.",
+        reply_markup=back_keyboard(),
+    )
+
+elif query.data == "set_support_username":
+    context.user_data.clear()
+    context.user_data["waiting_support_username"] = True
+
+    await query.edit_message_text(
+        "📞 Send the new Support Username.\n\nExample:\n@YourSupport",
+        reply_markup=back_keyboard(),
+    )
+
+elif query.data == "set_currency":
+    context.user_data.clear()
+    context.user_data["waiting_currency"] = True
+
+    await query.edit_message_text(
+        "💵 Send currency.\n\nExample:\nINR",
+        reply_markup=back_keyboard(),
+    )
+
+elif query.data == "set_timezone":
+    context.user_data.clear()
+    context.user_data["waiting_timezone"] = True
+
+    await query.edit_message_text(
+        "🕒 Send timezone.\n\nExample:\nAsia/Kolkata",
+        reply_markup=back_keyboard(),
+    )
+
+elif query.data == "set_reminder_days":
+    context.user_data.clear()
+    context.user_data["waiting_reminder_days"] = True
+
+    await query.edit_message_text(
+        "🔔 Send reminder days.\n\nExample:\n1",
+        reply_markup=back_keyboard(),
+    )
+
+elif query.data == "set_welcome_message":
+    context.user_data.clear()
+    context.user_data["waiting_welcome_message"] = True
+
+    await query.edit_message_text(
+        "💬 Send the new Welcome Message.",
+        reply_markup=back_keyboard(),
+    )
     elif query.data == "admin_stats":
         users = await total_users()
         channels = await total_channels()
