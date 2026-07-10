@@ -8,6 +8,7 @@ from database.payments import (
     update_payment_status_by_id,
     get_pending_payments,
     get_payment,
+    get_payment_history,
 )
 from database.subscriptions import get_subscription
 from services.subscription_service import activate_subscription, extend_subscription
