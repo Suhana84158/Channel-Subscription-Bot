@@ -33,10 +33,10 @@ async def handle_payment_screenshot(update: Update, context: ContextTypes.DEFAUL
     photo = update.message.photo[-1].file_id
 
     duration_minutes = int(plan.get("duration_minutes", 1440))
-    duration_text = plan.get("duration_text", "1d")
-    plan_name = plan.get("name", "Premium").replace("_", "-")
+duration_text = plan.get("duration_text", "1d")
+plan_name = plan.get("name", "Premium").replace("_", "-")
 
-    payment = await create_payment(
+payment = await create_payment(
     user_id=user.id,
     plan=plan_name,
     amount=plan["price"],
@@ -59,25 +59,26 @@ keyboard = InlineKeyboardMarkup([
         ),
     ]
 ])
-    caption = (
-        "🆕 New Payment\n\n"
-        f"👤 User: {user.first_name}\n"
-        f"🆔 User ID: {user.id}\n"
-        f"📦 Plan: {plan_name}\n"
-        f"💰 Amount: ₹{plan['price']}\n"
-        f"⏳ Duration: {duration_text}"
-    )
 
-    admins = await get_all_admins()
+caption = (
+    "🆕 New Payment\n\n"
+    f"👤 User: {user.first_name}\n"
+    f"🆔 User ID: {user.id}\n"
+    f"📦 Plan: {plan_name}\n"
+    f"💰 Amount: ₹{plan['price']}\n"
+    f"⏳ Duration: {duration_text}"
+)
 
-    for admin in admins:
-        try:
-            await context.bot.send_photo(
-                chat_id=admin["admin_id"],
-                photo=photo,
-                caption=caption,
-                reply_markup=keyboard,
-            )
+admins = await get_all_admins()
+
+for admin in admins:
+    try:
+        await context.bot.send_photo(
+            chat_id=admin["admin_id"],
+            photo=photo,
+            caption=caption,
+            reply_markup=keyboard,
+        )
         except Exception:
             pass
 
