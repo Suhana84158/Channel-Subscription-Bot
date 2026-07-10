@@ -37,11 +37,13 @@ async def handle_payment_screenshot(update: Update, context: ContextTypes.DEFAUL
     plan_name = plan.get("name", "Premium").replace("_", "-")
 
     await create_payment(
-        user_id=user.id,
-        plan=plan_name,
-        amount=plan["price"],
-        screenshot_file_id=photo,
-    )
+    user_id=user.id,
+    plan=plan_name,
+    amount=plan["price"],
+    screenshot_file_id=photo,
+    duration_minutes=duration_minutes,
+    duration_text=duration_text,
+)
 
     keyboard = InlineKeyboardMarkup([
         [
