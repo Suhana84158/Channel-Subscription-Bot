@@ -72,7 +72,48 @@ async def show_pending_payments(update: Update, context: ContextTypes.DEFAULT_TY
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
+async def show_payment_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
 
+    if not await is_admin(query.from_user.id):
+        await query.edit_message_text("❌ Not authorized")
+        return
+
+    payments = await get_payment_history(limit=20)
+
+    if not payments:
+        await query.edit_message_text(
+            "📜 No payment history found."
+        )
+        return
+
+    text = "📜 Payment History\n\n"
+
+    for payment in payments:
+        status = "✅" if payment["status"] == "approved" else "❌"
+
+        text += (
+            f"{status} User: {payment['user_id']}\n"
+            f"💰 ₹{payment['amount']}\n"
+            f"📦 {payment['plan']}\n"
+            f"⏳ {payment.get('duration_text', '-')}\n\n"
+        )
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "⬅ Back",
+                callback_data="admin_home",
+            )
+        ]
+    ])
+
+    await query.edit_message_text(
+        text,
+        reply_markup=keyboard,
+    )
+    
 async def view_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -320,6 +361,7 @@ async def reject_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def payment_approval_handlers():
     return [
+        CallbackQueryHandler(show_payment_history, pattern=r"^admin_payment_history$",),
         CallbackQueryHandler(show_pending_payments, pattern=r"^admin_pending_payments$"),
         CallbackQueryHandler(view_payment, pattern=r"^pay_view_"),
         CallbackQueryHandler(approve_payment_by_id, pattern=r"^pay_approve_"),
