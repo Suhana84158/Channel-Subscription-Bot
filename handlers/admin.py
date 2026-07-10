@@ -552,6 +552,19 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def receive_admin_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await is_admin(update.effective_user.id):
         return
+            if context.user_data.get("waiting_bot_name"):
+        new_name = update.message.text.strip()
+
+        await set_setting("bot_name", new_name)
+
+        context.user_data.clear()
+
+        await update.message.reply_text(
+            f"✅ Bot Name updated successfully!\n\n"
+            f"New Name: {new_name}",
+            reply_markup=admin_keyboard(),
+        )
+        return
 
     if context.user_data.get("waiting_upi_id"):
         await set_setting("upi_id", update.message.text.strip())
