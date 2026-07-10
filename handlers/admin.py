@@ -53,6 +53,7 @@ def admin_keyboard():
         [InlineKeyboardButton("📋 Channel List", callback_data="admin_channels")],
         [InlineKeyboardButton("📊 Statistics", callback_data="admin_stats")],
         [InlineKeyboardButton("💳 Payment Settings", callback_data="admin_payment_settings")],
+        [InlineKeyboardButton("⚙️ Bot Settings", callback_data="admin_bot_settings")],
         [InlineKeyboardButton("📨 Pending Payments", callback_data="admin_pending_payments")],
         [InlineKeyboardButton("📜 Payment History", callback_data="admin_payment_history")],
         [InlineKeyboardButton("📢 Broadcast", callback_data="admin_broadcast")],
