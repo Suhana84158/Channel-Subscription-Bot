@@ -9,6 +9,7 @@ from scheduler import start_scheduler
 
 from database.mongo import connect_database
 from database.admins import initialize_admins
+from database.settings import initialize_default_settings
 
 from handlers.start import start_command, start_callback_handler
 from handlers.errors import error_handler
@@ -32,6 +33,7 @@ async def post_init(application: Application):
 
     await connect_database()
     await initialize_admins()
+    await initialize_default_settings()
 
     start_scheduler()
 
