@@ -36,7 +36,7 @@ async def handle_payment_screenshot(update: Update, context: ContextTypes.DEFAUL
     duration_text = plan.get("duration_text", "1d")
     plan_name = plan.get("name", "Premium").replace("_", "-")
 
-    await create_payment(
+    payment = await create_payment(
     user_id=user.id,
     plan=plan_name,
     amount=plan["price"],
@@ -45,19 +45,20 @@ async def handle_payment_screenshot(update: Update, context: ContextTypes.DEFAUL
     duration_text=duration_text,
 )
 
-    keyboard = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                "✅ Approve",
-                callback_data=f"approve_{user.id}_{duration_minutes}_{plan_name}",
-            ),
-            InlineKeyboardButton(
-                "❌ Reject",
-                callback_data=f"reject_{user.id}",
-            ),
-        ]
-    ])
+payment_id = str(payment["_id"])
 
+keyboard = InlineKeyboardMarkup([
+    [
+        InlineKeyboardButton(
+            "✅ Approve",
+            callback_data=f"pay_approve_{payment_id}",
+        ),
+        InlineKeyboardButton(
+            "❌ Reject",
+            callback_data=f"pay_reject_{payment_id}",
+        ),
+    ]
+])
     caption = (
         "🆕 New Payment\n\n"
         f"👤 User: {user.first_name}\n"
