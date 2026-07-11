@@ -582,45 +582,46 @@ async def receive_admin_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
         duration_text = update.message.text.strip().lower()
 
         try:
-            duration_minutes, unit = parse_plan_time(duration_text)
+        duration_minutes, unit = parse_plan_time(duration_text)
 
-            if duration_minutes % 1440 == 0:
-                duration_days = duration_minutes // 1440
-            else:
-                duration_days = 0
+        if duration_minutes % 1440 == 0:
+            duration_days = duration_minutes // 1440
+            
+        else:
+            duration_days = 0
 
-            if context.user_data.get("give_sub_user"):
-                user_id = context.user_data.get("give_sub_user")
+        if context.user_data.get("give_sub_user"):
+            user_id = context.user_data.get("give_sub_user")
 
-                expiry = await activate_subscription(
-                    user_id=user_id,
-                    plan_name="Admin Gift",
-                    duration_days=duration_days,
-                    duration_minutes=duration_minutes,
-                )
-                action_text = "given"
-
-            else:
-                user_id = context.user_data.get("extend_sub_user")
-
-                expiry = await renew_subscription(
-                    user_id=user_id,
-                    duration_days=duration_days,
-                    duration_minutes=duration_minutes,
-                )
-                action_text = "extended"
-
-            await grant_channel_access(user_id)
-            context.user_data.clear()
-
-            expiry_text = format_time(expiry)
-
-            await update.message.reply_text(
-                f"✅ Subscription {action_text} successfully!\n\n"
-                f"👤 User ID: {user_id}\n"
-                f"⏳ Duration: {duration_text}\n"
-                f"📅 Expiry: {expiry_text}"
+            expiry = await activate_subscription(
+                user_id=user_id,
+                plan_name="Admin Gift",
+                duration_days=duration_days,
+                duration_minutes=duration_minutes,
             )
+            action_text = "given"
+
+            else:
+            user_id = context.user_data.get("extend_sub_user")
+
+            expiry = await renew_subscription(
+                user_id=user_id,
+                duration_days=duration_days,
+                duration_minutes=duration_minutes,
+            )
+            action_text = "extended"
+
+        await grant_channel_access(user_id)
+        context.user_data.clear()
+
+        expiry_text = format_time(expiry)
+
+        await update.message.reply_text(
+            f"✅ Subscription {action_text} successfully!\n\n"
+            f"👤 User ID: {user_id}\n"
+            f"⏳ Duration: {duration_text}\n"
+            f"📅 Expiry: {expiry_text}"
+        )
 
         except Exception as e:
             await update.message.reply_text(
