@@ -65,6 +65,10 @@ def back_keyboard():
         [InlineKeyboardButton("⬅ Back", callback_data="admin_home")]
     ])
 
+def bot_settings_back_keyboard():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("⬅ Back", callback_data="admin_bot_settings")]
+    ])
 
 def user_action_keyboard(user_id: int, banned: bool):
     keyboard = [
@@ -459,7 +463,7 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await query.edit_message_text(
             "🤖 Send the new Bot Name.",
-            reply_markup=back_keyboard(),
+            reply_markup=bot_settings_back_keyboard(),
         )
 
     elif query.data == "set_support_username":
@@ -468,7 +472,7 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await query.edit_message_text(
             "📞 Send the new Support Username.\n\nExample:\n@YourSupport",
-            reply_markup=back_keyboard(),
+            reply_markup=bot_settings_back_keyboard(),
         )
 
     elif query.data == "set_currency":
@@ -477,7 +481,7 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await query.edit_message_text(
             "💵 Send currency.\n\nExample:\nINR",
-            reply_markup=back_keyboard(),
+            reply_markup=bot_settings_back_keyboard(),
         )
 
     elif query.data == "set_timezone":
@@ -486,7 +490,7 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await query.edit_message_text(
             "🕒 Send timezone.\n\nExample:\nAsia/Kolkata",
-            reply_markup=back_keyboard(),
+            reply_markup=bot_settings_back_keyboard(),
         )
 
     elif query.data == "set_reminder_days":
@@ -495,7 +499,7 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await query.edit_message_text(
             "🔔 Send reminder days.\n\nExample:\n1",
-            reply_markup=back_keyboard(),
+            reply_markup=bot_settings_back_keyboard(),
         )
 
     elif query.data == "set_welcome_message":
@@ -504,7 +508,7 @@ async def admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await query.edit_message_text(
             "💬 Send the new Welcome Message.",
-            reply_markup=back_keyboard(),
+            reply_markup=bot_settings_back_keyboard(),
         )
     elif query.data == "admin_stats":
         users = await total_users()
