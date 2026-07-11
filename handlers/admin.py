@@ -904,7 +904,7 @@ def admin_handlers():
         CommandHandler("removeadmin", remove_admin_command),
         CommandHandler("addchannel", add_channel_start),
         CommandHandler("removechannel", remove_channel_command),
-        CallbackQueryHandler(admin_buttons, pattern=r"^(admin_|user_|set_upi_)"),
+        CallbackQueryHandler(admin_buttons, pattern=r"^(admin_|user_|set_)"),
         MessageHandler(filters.FORWARDED, receive_channel_forward),
         MessageHandler(filters.TEXT & ~filters.COMMAND, receive_admin_text),
     ]
